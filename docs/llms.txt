@@ -42,6 +42,6 @@ The author is Riku Ogasawara. The project is in early OSS phase — Apple Develo
 
 ## Optional
 
-- [Cloudflare Pages site](https://hutch.pages.dev/): this landing page
+- [Cloudflare Pages site](https://hutch-arh.pages.dev/): this landing page
 - [GitHub Issues](https://github.com/Riku4230/Hutch/issues): bug reports and feature requests
 - [Releases RSS / Atom feed](https://github.com/Riku4230/Hutch/releases.atom): subscribe for new releases

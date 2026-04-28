@@ -62,4 +62,4 @@ Allow: /
 User-agent: DuckDuckBot
 Allow: /
 
-Sitemap: https://hutch.pages.dev/sitemap.xml
+Sitemap: https://hutch-arh.pages.dev/sitemap.xml

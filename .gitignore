@@ -26,3 +26,4 @@ plans/
 *.sqlite-wal
 *.sqlite-shm
 *.db
+.wrangler/

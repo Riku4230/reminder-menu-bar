@@ -7,7 +7,7 @@ Project: Hutch
 Maintainer: Riku Ogasawara
 License: MIT
 Repository: https://github.com/Riku4230/Hutch
-Landing page: https://hutch.pages.dev/
+Landing page: https://hutch-arh.pages.dev/
 
 ---
 
