@@ -1,15 +1,15 @@
 cask "nudge" do
   version "0.1.0"
-  sha256 :no_check
+  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
-  url "https://github.com/Riku4230/Nudge/releases/latest/download/Nudge-v#{version}.dmg",
+  url "https://github.com/Riku4230/Nudge/releases/download/v#{version}/Nudge-v#{version}.dmg",
       verified: "github.com/Riku4230/Nudge/"
   name "Nudge"
   desc "Menu bar app for Apple Reminders with AI mode"
   homepage "https://github.com/Riku4230/Nudge"
 
   livecheck do
-    url :url
+    url :homepage
     strategy :github_latest
   end
 

@@ -11,8 +11,16 @@ struct OnboardingView: View {
     @EnvironmentObject private var aiSettings: AISettings
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    /// 現在のステップ（再起動を跨いでも続きから始められるよう AppStorage に保存）
+    @AppStorage("onboardingStep") private var stepRaw: Int = 0
 
-    @State private var step: Step = .welcome
+    private var step: Step {
+        get { Step(rawValue: stepRaw) ?? .welcome }
+    }
+
+    private func setStep(_ next: Step) {
+        stepRaw = next.rawValue
+    }
 
     enum Step: Int, CaseIterable {
         case welcome
@@ -60,6 +68,19 @@ struct OnboardingView: View {
         }
         .frame(width: 372, height: 540)
         .background(MRTheme.Surface.background)
+        .onAppear { autoAdvanceIfReady() }
+    }
+
+    /// FDA 許可で再起動して戻ってきた直後など、すでに条件を満たしているステップは自動で次へ進める
+    private func autoAdvanceIfReady() {
+        switch step {
+        case .subtaskShortcut where app.subtaskShortcutInstalled:
+            setStep(.fullDiskAccess)
+        case .fullDiskAccess where store.hasFullDiskAccess:
+            setStep(.aiProvider)
+        default:
+            break
+        }
     }
 
     // MARK: - Header
@@ -123,23 +144,23 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 14) {
             featureRow(
                 icon: "checklist",
-                title: "リマインダーをメニューバーから",
-                detail: "iCloud 同期される純正リマインダーをそのまま使えます"
+                title: "メニューバーから瞬時に追加",
+                detail: "Dock を離れずタスクを書いて、書き終わったら閉じるだけ"
             )
             featureRow(
                 icon: "sparkles",
-                title: "AI で自然言語追加",
-                detail: "「明日 15 時に病院」と書くだけで日付・メモ・URL を抽出"
+                title: "AI が言葉を理解する",
+                detail: "「明日 15 時に病院」で日付・メモ・URL まで自動抽出"
             )
             featureRow(
                 icon: "list.bullet.indent",
-                title: "サブタスクと進行中ステータス",
-                detail: "純正アプリにはない 3 状態管理と AI 自動分解"
+                title: "進捗が見えるタスク管理",
+                detail: "未着手 / 進行中 / 完了の 3 状態とサブタスク自動分解"
             )
             featureRow(
                 icon: "calendar",
-                title: "カレンダービュー",
-                detail: "リスト色のドットで月単位のリマインダーが見える"
+                title: "カレンダーで月を俯瞰",
+                detail: "リスト色のドットで予定が一目で分かる"
             )
 
             actionPrimary(label: "リマインダーへのアクセスを許可") {
@@ -368,7 +389,7 @@ struct OnboardingView: View {
     private func advance() {
         if let next = Step(rawValue: step.rawValue + 1) {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                step = next
+                setStep(next)
             }
         } else {
             complete()
@@ -378,13 +399,15 @@ struct OnboardingView: View {
     private func back() {
         if let prev = Step(rawValue: step.rawValue - 1) {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                step = prev
+                setStep(prev)
             }
         }
     }
 
     private func complete() {
         hasCompletedOnboarding = true
+        // 完了後の再オンボーディングに備えて step は welcome に戻しておく
+        stepRaw = 0
     }
 }
 

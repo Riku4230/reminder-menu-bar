@@ -20,6 +20,14 @@ cp ".build/$CONFIG/$PRODUCT_NAME" "$APP_DIR/Contents/MacOS/$PRODUCT_NAME"
 cp "$ROOT_DIR/Info.plist" "$APP_DIR/Contents/Info.plist"
 chmod +x "$APP_DIR/Contents/MacOS/$PRODUCT_NAME"
 
+# VERSION 環境変数があれば Info.plist のバージョンを上書き（リリース時に GitHub Actions から渡される）
+if [[ -n "${VERSION:-}" ]]; then
+  CLEAN_VERSION="${VERSION#v}"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $CLEAN_VERSION" "$APP_DIR/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $CLEAN_VERSION" "$APP_DIR/Contents/Info.plist"
+  echo "Set version to $CLEAN_VERSION"
+fi
+
 # サブタスク用ショートカットなどのバンドルリソースをコピー
 if [[ -d "$ROOT_DIR/Resources" ]]; then
   cp -R "$ROOT_DIR/Resources/." "$APP_DIR/Contents/Resources/"

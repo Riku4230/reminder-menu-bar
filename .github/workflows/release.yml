@@ -10,27 +10,35 @@ on:
         description: 'Tag (e.g. v0.2.0). Leave blank to use HEAD short SHA.'
         required: false
 
+permissions:
+  contents: write
+
 jobs:
   build:
-    name: Build & package macOS app
+    name: Build, package, and release
     runs-on: macos-14
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Resolve version
         id: version
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
-            VERSION="${GITHUB_REF##*/}"
+            RAW="${GITHUB_REF##*/}"
           elif [[ -n "${{ github.event.inputs.tag }}" ]]; then
-            VERSION="${{ github.event.inputs.tag }}"
+            RAW="${{ github.event.inputs.tag }}"
           else
-            VERSION="dev-$(git rev-parse --short HEAD)"
+            RAW="dev-$(git rev-parse --short HEAD)"
           fi
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Building Nudge ${VERSION}"
+          SEMVER="${RAW#v}"
+          echo "raw=${RAW}" >> "$GITHUB_OUTPUT"
+          echo "semver=${SEMVER}" >> "$GITHUB_OUTPUT"
+          echo "Building Nudge ${RAW} (semver=${SEMVER})"
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_15.4.app
@@ -42,26 +50,31 @@ jobs:
         run: ./scripts/build_app.sh
         env:
           CONFIG: release
+          VERSION: ${{ steps.version.outputs.raw }}
 
       - name: Package .dmg
         id: dmg
         run: |
           set -euo pipefail
-          VERSION="${{ steps.version.outputs.version }}"
-          OUT="build/Nudge-${VERSION}.dmg"
+          RAW="${{ steps.version.outputs.raw }}"
+          OUT="build/Nudge-${RAW}.dmg"
           STAGING="$(mktemp -d)/Nudge"
           mkdir -p "$STAGING"
           cp -R build/Nudge.app "$STAGING/Nudge.app"
           ln -s /Applications "$STAGING/Applications"
           hdiutil create -volname "Nudge" -srcfolder "$STAGING" -ov -format UDZO "$OUT"
-          shasum -a 256 "$OUT" | tee "$OUT.sha256"
+          SHA=$(shasum -a 256 "$OUT" | awk '{print $1}')
+          echo "$SHA  $(basename "$OUT")" > "$OUT.sha256"
           echo "dmg=$OUT" >> "$GITHUB_OUTPUT"
           echo "sha=$OUT.sha256" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "DMG: $OUT"
+          echo "SHA256: $SHA"
 
       - name: Upload as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Nudge-${{ steps.version.outputs.version }}
+          name: Nudge-${{ steps.version.outputs.raw }}
           path: |
             ${{ steps.dmg.outputs.dmg }}
             ${{ steps.dmg.outputs.sha }}
@@ -70,10 +83,39 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          name: Nudge ${{ steps.version.outputs.version }}
+          name: Nudge ${{ steps.version.outputs.raw }}
           draft: false
           prerelease: false
           generate_release_notes: true
           files: |
             ${{ steps.dmg.outputs.dmg }}
             ${{ steps.dmg.outputs.sha }}
+
+      - name: Update Homebrew Cask on main
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          SEMVER: ${{ steps.version.outputs.semver }}
+          SHA256: ${{ steps.dmg.outputs.sha256 }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # main を最新化（タグから checkout しているため）
+          git fetch origin main
+          git checkout main
+          git pull --ff-only origin main
+
+          # Cask の version と sha256 を書き換え
+          sed -i '' -E "s/^([[:space:]]*)version \"[^\"]*\"/\1version \"${SEMVER}\"/" Casks/nudge.rb
+          sed -i '' -E "s/^([[:space:]]*)sha256 \"[^\"]*\"/\1sha256 \"${SHA256}\"/" Casks/nudge.rb
+
+          # 変更があれば commit + push
+          if git diff --quiet Casks/nudge.rb; then
+            echo "Cask already up to date"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/nudge.rb
+          git commit -m "Bump cask to v${SEMVER} [skip ci]"
+          git push origin main
