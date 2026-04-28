@@ -423,8 +423,8 @@ struct ReminderRow: View {
                     .foregroundStyle(Color.secondaryText)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(Color.white.opacity(0.85), in: Capsule())
-                    .overlay(Capsule().stroke(Color.black.opacity(0.08), lineWidth: 0.5))
+                    .background(MRTheme.Surface.field, in: Capsule())
+                    .overlay(Capsule().stroke(MRTheme.Border.hairline, lineWidth: 0.5))
                 }
                 .buttonStyle(.plain)
                 .help("このタスクの下にサブタスクを追加")
@@ -592,7 +592,7 @@ struct ReminderRow: View {
                         .font(.system(size: 8, weight: .bold))
                         .foregroundStyle(Color.tertiaryText)
                         .frame(width: 16, height: 16)
-                        .background(Color.black.opacity(0.04), in: Circle())
+                        .background(MRTheme.Surface.inset, in: Circle())
                 }
                 .buttonStyle(.plain)
                 .help("期限を外す")
@@ -974,7 +974,7 @@ struct ModernCalendar: View {
                 .font(.system(size: small ? 5 : 9, weight: .bold))
                 .foregroundStyle(small ? MRTheme.accent : Color.secondaryText)
                 .frame(width: 20, height: 20)
-                .background(Color.black.opacity(0.04), in: Circle())
+                .background(MRTheme.Surface.inset, in: Circle())
         }
         .buttonStyle(.plain)
     }
@@ -1150,7 +1150,7 @@ struct ActionChip: View {
         .foregroundStyle(color)
         .padding(.horizontal, text.isEmpty ? 7 : 9)
         .padding(.vertical, 4)
-        .background(Color.white.opacity(0.85), in: Capsule())
-        .overlay(Capsule().stroke(Color.black.opacity(0.08), lineWidth: 0.5))
+        .background(MRTheme.Surface.field, in: Capsule())
+        .overlay(Capsule().stroke(MRTheme.Border.hairline, lineWidth: 0.5))
     }
 }

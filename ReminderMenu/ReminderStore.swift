@@ -213,7 +213,20 @@ final class ReminderStore: NSObject, ObservableObject {
     /// 進行中ステータスを表すタグ名（先頭の `#` は含めない）
     static let progressTag = "wip"
 
+    /// 時刻なしリマインダーのデフォルト通知時刻（時 / 分）
+    static let defaultDateOnlyHour = 17
+    static let defaultDateOnlyMinute = 0
+
+    /// メニューバーアイコンの脈動アニメ発火イベントを流すサブジェクト。
+    /// AppDelegate が購読してアイコンを動かす。
+    let menuBarPulses = PassthroughSubject<MenuBarPulse, Never>()
+
     private var childMap: [String: [String]] = [:]   // parentID -> [childID]
+
+    /// 既に脈動を出したアラームの識別子（同じイベントで連続発火しないため）。
+    /// key = "<reminderID>|<unix-timestamp-of-effective-alarm>"
+    private var firedPulseKeys: Set<String> = []
+    private var pulseTimer: Timer?
 
     private let eventStore = EKEventStore()
     private var activeFetch: Any?
@@ -227,10 +240,98 @@ final class ReminderStore: NSObject, ObservableObject {
             name: .EKEventStoreChanged,
             object: eventStore
         )
+        startPulseTimer()
     }
 
     deinit {
+        pulseTimer?.invalidate()
         NotificationCenter.default.removeObserver(self)
+    }
+
+    // MARK: - Menu bar pulse engine
+
+    /// 30 秒ごとに、リマインダーの「実効アラーム時刻」が現在時刻 ±60 秒に
+    /// 収まっているものを探して MenuBarPulse を流す。同じイベントで二重発火しないよう
+    /// firedPulseKeys でデダップする。
+    private func startPulseTimer() {
+        pulseTimer?.invalidate()
+        // 起動直後に 1 回チェック、その後 30 秒間隔
+        Task { @MainActor in
+            self.scanAndEmitPulses()
+        }
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.scanAndEmitPulses()
+            }
+        }
+    }
+
+    private func scanAndEmitPulses() {
+        let now = Date()
+        let window: TimeInterval = 60   // ±60 秒の判定ウィンドウ
+
+        for reminder in reminders where !reminder.isCompleted {
+            for (alarmTime, kind) in effectiveAlarmTimes(for: reminder, now: now) {
+                let delta = alarmTime.timeIntervalSince(now)
+                guard abs(delta) <= window else { continue }
+                let key = "\(reminder.calendarItemIdentifier)|\(Int(alarmTime.timeIntervalSince1970))"
+                guard !firedPulseKeys.contains(key) else { continue }
+                firedPulseKeys.insert(key)
+                menuBarPulses.send(
+                    MenuBarPulse(title: reminder.title, kind: kind, firedAt: now)
+                )
+            }
+        }
+
+        // 1 日以上前の発火履歴は破棄してメモリを節約
+        firedPulseKeys = firedPulseKeys.filter { key in
+            guard let timestamp = Double(key.split(separator: "|").last ?? "") else { return false }
+            return Date(timeIntervalSince1970: timestamp).timeIntervalSinceNow > -86_400
+        }
+    }
+
+    /// あるリマインダーの「メニューバーが脈動すべき時刻」一覧を返す。
+    /// - 明示的な EKAlarm: そのまま採用
+    /// - 期限はあるが時刻指定なし: その日の `defaultDateOnlyHour` を擬似アラーム扱い
+    /// - 過去の期限切れタスク: 当日の `defaultDateOnlyHour` に再レビュー
+    private func effectiveAlarmTimes(for reminder: EKReminder, now: Date) -> [(Date, MenuBarPulse.Kind)] {
+        var result: [(Date, MenuBarPulse.Kind)] = []
+
+        let dueDate = self.dueDate(for: reminder)
+        let hasExplicitTime = self.includesTime(reminder)
+        let hasExplicitAlarm = !(reminder.alarms?.isEmpty ?? true)
+
+        // 1. 明示アラーム
+        if let alarms = reminder.alarms, let dueDate {
+            for alarm in alarms {
+                let t = alarm.absoluteDate ?? dueDate.addingTimeInterval(alarm.relativeOffset)
+                result.append((t, .alarm))
+            }
+        }
+
+        // 2. 時刻指定なし → その日の 17:00
+        if let dueDate, !hasExplicitTime, !hasExplicitAlarm {
+            if let t = combine(date: dueDate, hour: Self.defaultDateOnlyHour, minute: Self.defaultDateOnlyMinute) {
+                result.append((t, .dateOnly))
+            }
+        }
+
+        // 3. 期限切れ（昨日以前が期限） → 当日 17:00 に再レビュー
+        if let dueDate, dueDate < calendar.startOfDay(for: now) {
+            if let t = combine(date: now, hour: Self.defaultDateOnlyHour, minute: Self.defaultDateOnlyMinute) {
+                result.append((t, .overdueReview))
+            }
+        }
+
+        return result
+    }
+
+    private func combine(date: Date, hour: Int, minute: Int) -> Date? {
+        var c = calendar.dateComponents([.year, .month, .day], from: date)
+        c.hour = hour
+        c.minute = minute
+        c.second = 0
+        return calendar.date(from: c)
     }
 
     var hasFullAccess: Bool {

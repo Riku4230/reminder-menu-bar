@@ -23,6 +23,15 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
         case .dark: return .dark
         }
     }
+
+    /// `NSApp.appearance` に渡す値。nil で OS 設定に従う。
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system: return nil
+        case .light: return NSAppearance(named: .aqua)
+        case .dark: return NSAppearance(named: .darkAqua)
+        }
+    }
 }
 
 struct ToastMessage: Identifiable, Equatable {

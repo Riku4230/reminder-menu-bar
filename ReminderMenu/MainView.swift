@@ -200,7 +200,7 @@ struct MainView: View {
             }
         }
         .frame(width: 372, height: popoverHeight)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .preferredColorScheme(app.appearance.colorScheme)
         .onAppear {
             selectedCalendarID = store.selectedCalendarIDForCreation ?? store.calendars.first?.id
@@ -256,34 +256,61 @@ struct MainView: View {
         }
     }
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var glassBackground: some View {
         ZStack {
             VisualEffectView(material: .hudWindow)
             LinearGradient(
-                colors: [
-                    Color.white.opacity(0.78),
-                    Color.white.opacity(0.62),
-                    Color.white.opacity(0.50)
-                ],
+                colors: gradientColors,
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            // Soft cool highlights for depth (very subtle)
+            // ハイライト（暖かさを足す微妙な発光、ダークモードでは控えめに）
             Circle()
-                .fill(Color.white.opacity(0.30))
+                .fill(highlightColor)
                 .frame(width: 240, height: 240)
                 .blur(radius: 60)
                 .offset(x: 110, y: -200)
             Circle()
-                .fill(Color(red: 0.92, green: 0.94, blue: 0.97).opacity(0.45))
+                .fill(secondaryHighlightColor)
                 .frame(width: 260, height: 260)
                 .blur(radius: 70)
                 .offset(x: -130, y: 230)
         }
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.55), lineWidth: 0.6)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(borderColor, lineWidth: 0.6)
         )
+    }
+
+    private var gradientColors: [Color] {
+        if colorScheme == .dark {
+            return [
+                Color.white.opacity(0.06),
+                Color.white.opacity(0.03),
+                Color.black.opacity(0.20)
+            ]
+        }
+        return [
+            Color.white.opacity(0.78),
+            Color.white.opacity(0.62),
+            Color.white.opacity(0.50)
+        ]
+    }
+
+    private var highlightColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.30)
+    }
+
+    private var secondaryHighlightColor: Color {
+        colorScheme == .dark
+            ? MRTheme.accent.opacity(0.10)
+            : Color(red: 0.92, green: 0.94, blue: 0.97).opacity(0.45)
+    }
+
+    private var borderColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.10) : Color.white.opacity(0.55)
     }
 
     private var header: some View {
@@ -319,7 +346,7 @@ struct MainView: View {
                         .foregroundStyle(Color.secondaryText)
                         .rotationEffect(.degrees(showListDropdown ? 180 : 0))
                         .padding(4)
-                        .background(Circle().fill(Color.black.opacity(0.04)))
+                        .background(Circle().fill(MRTheme.Surface.inset))
                         .padding(.leading, 1)
                 }
                 .padding(.vertical, 4)
@@ -403,10 +430,10 @@ struct MainView: View {
         }
         .padding(.horizontal, 11)
         .padding(.vertical, 7)
-        .background(Color.black.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(MRTheme.Surface.inset, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.black.opacity(0.06), lineWidth: 0.5)
+                .stroke(MRTheme.Border.hairline, lineWidth: 0.5)
         )
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
@@ -609,7 +636,7 @@ struct MainView: View {
                 .foregroundStyle(isAI ? Color.white : Color.secondaryText)
                 .frame(width: 26, height: 26)
                 .background(
-                    Circle().fill(isAI ? AnyShapeStyle(MRTheme.accent) : AnyShapeStyle(Color.black.opacity(0.05)))
+                    Circle().fill(isAI ? AnyShapeStyle(MRTheme.accent) : AnyShapeStyle(MRTheme.Surface.inset))
                 )
                 .overlay(
                     Circle().stroke(
@@ -713,8 +740,8 @@ struct MainView: View {
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(Color.secondaryText)
                             .frame(width: 26, height: 26)
-                            .background(Color.black.opacity(0.04), in: Circle())
-                            .overlay(Circle().stroke(Color.black.opacity(0.08), lineWidth: 0.5))
+                            .background(MRTheme.Surface.inset, in: Circle())
+                            .overlay(Circle().stroke(MRTheme.Border.hairline, lineWidth: 0.5))
                     }
                     .buttonStyle(.plain)
                     .help(optionsOpen ? "オプションを閉じる" : "オプションを開く")
@@ -741,15 +768,15 @@ struct MainView: View {
                 .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isParsing)
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 11)
-            .background(Color.white.opacity(0.85))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(.vertical, 8)
+            .background(MRTheme.Surface.field)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(inputMode == .ai ? MRTheme.accent.opacity(0.55) : Color.black.opacity(0.08), lineWidth: 0.6)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(inputMode == .ai ? MRTheme.accent.opacity(0.55) : MRTheme.Border.hairline, lineWidth: 0.6)
             )
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 12)
     }
@@ -764,8 +791,8 @@ struct MainView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.black.opacity(0.06), lineWidth: 0.5))
+        .background(MRTheme.Surface.field, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(MRTheme.Border.hairline, lineWidth: 0.5))
     }
 
     private var inputURLField: some View {
@@ -833,7 +860,7 @@ struct MainView: View {
                         .font(.system(size: 8, weight: .bold))
                         .foregroundStyle(Color.tertiaryText)
                         .frame(width: 16, height: 16)
-                        .background(Color.black.opacity(0.04), in: Circle())
+                        .background(MRTheme.Surface.inset, in: Circle())
                 }
                 .buttonStyle(.plain)
                 .help("期限を外す")
@@ -1071,8 +1098,8 @@ struct MainView: View {
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(inputFlagged ? MRTheme.accent : Color.tertiaryText)
                 .frame(width: 26, height: 22)
-                .background(inputFlagged ? MRTheme.accentSoft : Color.black.opacity(0.04), in: Capsule())
-                .overlay(Capsule().stroke(Color.black.opacity(0.08), lineWidth: 0.5))
+                .background(inputFlagged ? MRTheme.accentSoft : MRTheme.Surface.inset, in: Capsule())
+                .overlay(Capsule().stroke(MRTheme.Border.hairline, lineWidth: 0.5))
         }
         .buttonStyle(.plain)
         .help(inputFlagged ? "フラグを外す" : "フラグを付ける")
@@ -1098,8 +1125,8 @@ struct MainView: View {
             .foregroundStyle(Color.primaryText)
             .padding(.horizontal, 9)
             .padding(.vertical, 4)
-            .background(Color.white.opacity(0.9), in: Capsule())
-            .overlay(Capsule().stroke(Color.black.opacity(0.10), lineWidth: 0.5))
+            .background(MRTheme.Surface.field, in: Capsule())
+            .overlay(Capsule().stroke(MRTheme.Border.line, lineWidth: 0.5))
         }
         .buttonStyle(.plain)
         .popover(isPresented: $showInputListMenu, arrowEdge: .top) {
@@ -1589,8 +1616,8 @@ private struct OptionChip: View {
             .foregroundStyle(isActive ? Color.white : Color.primaryText)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(isActive ? activeColor : Color.black.opacity(0.04), in: Capsule())
-            .overlay(Capsule().stroke(isActive ? Color.clear : Color.black.opacity(0.08), lineWidth: 0.5))
+            .background(isActive ? activeColor : MRTheme.Surface.inset, in: Capsule())
+            .overlay(Capsule().stroke(isActive ? Color.clear : MRTheme.Border.hairline, lineWidth: 0.5))
         }
         .buttonStyle(.plain)
     }

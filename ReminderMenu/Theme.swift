@@ -16,21 +16,50 @@ enum MRTheme {
 
     static let listColors: [Color] = [accent, blue, green, purple, pink, red, yellow, gray]
 
-    // ---- Semantic surfaces ----
+    // ---- Semantic surfaces (light/dark adaptive) ----
     enum Surface {
-        static let background = Color.white.opacity(0.92)
-        static let card = Color.black.opacity(0.025)
-        static let cardSelected = Color(red: 0.22, green: 0.52, blue: 0.95).opacity(0.06)
-        static let inset = Color.black.opacity(0.04)
-        static let field = Color.white.opacity(0.85)
-        static let glass = Color.white.opacity(0.65)
+        /// ポップオーバー全体の地（VisualEffect の上に重ねる薄い地）
+        static let background = Color.adaptive(
+            light: NSColor(white: 1.0, alpha: 0.92),
+            dark:  NSColor(white: 0.10, alpha: 0.55)
+        )
+        /// カードや行の控えめなホバー / 選択地
+        static let card = Color.adaptive(
+            light: NSColor(white: 0.0, alpha: 0.025),
+            dark:  NSColor(white: 1.0, alpha: 0.04)
+        )
+        static let cardSelected = MRTheme.accent.opacity(0.10)
+        /// チップ / アイコン丸ボタンの内地（ボタン質感）
+        static let inset = Color.adaptive(
+            light: NSColor(white: 0.0, alpha: 0.05),
+            dark:  NSColor(white: 1.0, alpha: 0.08)
+        )
+        /// 入力欄 / 浮く面（カプセル / ボックス）
+        static let field = Color.adaptive(
+            light: NSColor(white: 1.0, alpha: 0.85),
+            dark:  NSColor(white: 1.0, alpha: 0.07)
+        )
+        /// 半透明ガラス（メニューの薄い面）
+        static let glass = Color.adaptive(
+            light: NSColor(white: 1.0, alpha: 0.6),
+            dark:  NSColor(white: 1.0, alpha: 0.06)
+        )
     }
 
     enum Border {
-        static let hairline = Color.black.opacity(0.07)
-        static let line = Color.black.opacity(0.10)
-        static let strong = Color.black.opacity(0.18)
-        static let accent = Color(red: 0.22, green: 0.52, blue: 0.95).opacity(0.45)
+        static let hairline = Color.adaptive(
+            light: NSColor(white: 0, alpha: 0.07),
+            dark:  NSColor(white: 1, alpha: 0.08)
+        )
+        static let line = Color.adaptive(
+            light: NSColor(white: 0, alpha: 0.10),
+            dark:  NSColor(white: 1, alpha: 0.12)
+        )
+        static let strong = Color.adaptive(
+            light: NSColor(white: 0, alpha: 0.18),
+            dark:  NSColor(white: 1, alpha: 0.22)
+        )
+        static let accent = MRTheme.accent.opacity(0.45)
     }
 
     // ---- Spacing scale ----
@@ -82,6 +111,16 @@ extension Color {
     static var primaryText: Color { Color(nsColor: .labelColor) }
     static var secondaryText: Color { Color(nsColor: .secondaryLabelColor) }
     static var tertiaryText: Color { Color(nsColor: .tertiaryLabelColor) }
+
+    /// ライト / ダークアピアランスで自動切り替えされる SwiftUI Color。
+    /// dynamicProvider で `appearance.bestMatch(...)` を見て解決する。
+    static func adaptive(light: NSColor, dark: NSColor) -> Color {
+        let dynamic = NSColor(name: nil) { appearance in
+            let darkMatch = appearance.bestMatch(from: [.darkAqua, .vibrantDark, .accessibilityHighContrastDarkAqua, .accessibilityHighContrastVibrantDark])
+            return darkMatch != nil ? dark : light
+        }
+        return Color(nsColor: dynamic)
+    }
 }
 
 extension DateFormatter {

@@ -9,12 +9,12 @@ struct ModernMenuSurface<Content: View>: View {
         content
             .padding(5)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .background(Color.white.opacity(0.4))
+            .background(MRTheme.Surface.glass)
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.black.opacity(0.06), lineWidth: 0.5)
+                    .stroke(MRTheme.Border.hairline, lineWidth: 0.5)
             )
-            .shadow(color: Color.black.opacity(0.10), radius: 18, y: 8)
+            .shadow(color: MRTheme.Border.line, radius: 18, y: 8)
     }
 }
 
@@ -58,7 +58,7 @@ struct ModernMenuRow: View {
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isHovered ? Color.black.opacity(0.06) : Color.clear)
+            .background(isHovered ? MRTheme.Border.hairline : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 7))
             .contentShape(Rectangle())
         }
@@ -94,7 +94,7 @@ struct ModernMenuToggleRow: View {
         .padding(.horizontal, 9)
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(isHovered ? Color.black.opacity(0.06) : Color.clear)
+        .background(isHovered ? MRTheme.Border.hairline : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 7))
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
@@ -132,7 +132,7 @@ struct ModernMenuTitle: View {
                 .padding(.horizontal, 10)
                 .padding(.top, 6)
             Rectangle()
-                .fill(Color.black.opacity(0.07))
+                .fill(MRTheme.Border.hairline)
                 .frame(height: 0.5)
                 .padding(.horizontal, 6)
         }
@@ -161,7 +161,7 @@ struct ModernSegmented<Value: Hashable>: View {
                         .padding(.vertical, 5)
                         .frame(maxWidth: .infinity)
                         .background(
-                            selection == value ? AnyShapeStyle(MRTheme.accent) : AnyShapeStyle(Color.black.opacity(0.04)),
+                            selection == value ? AnyShapeStyle(MRTheme.accent) : AnyShapeStyle(MRTheme.Surface.inset),
                             in: Capsule()
                         )
                 }
@@ -177,7 +177,7 @@ struct ModernSegmented<Value: Hashable>: View {
 struct ModernMenuDivider: View {
     var body: some View {
         Rectangle()
-            .fill(Color.black.opacity(0.07))
+            .fill(MRTheme.Border.hairline)
             .frame(height: 0.5)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -237,7 +237,7 @@ struct ModernTimePicker: View {
                             .background(
                                 isSelected(h: h, m: m)
                                     ? AnyShapeStyle(MRTheme.accent)
-                                    : AnyShapeStyle(Color.black.opacity(0.04)),
+                                    : AnyShapeStyle(MRTheme.Surface.inset),
                                 in: Capsule()
                             )
                     }
@@ -297,10 +297,10 @@ private struct TimeNumberField: View {
             .multilineTextAlignment(.center)
             .frame(width: width)
             .padding(.vertical, 4)
-            .background(Color.white.opacity(0.92), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .background(MRTheme.Surface.field, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(focused ? MRTheme.accent : Color.black.opacity(0.10), lineWidth: focused ? 1.2 : 0.5)
+                    .stroke(focused ? MRTheme.accent : MRTheme.Border.line, lineWidth: focused ? 1.2 : 0.5)
             )
             .focused($focused)
             .onAppear { text = String(format: "%02d", value) }
@@ -357,10 +357,10 @@ struct ListPicker: View {
             .padding(.horizontal, 11)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
-            .background(Color.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .background(MRTheme.Surface.field, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color.black.opacity(0.08), lineWidth: 0.5)
+                    .stroke(MRTheme.Border.hairline, lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)
