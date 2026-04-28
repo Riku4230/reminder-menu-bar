@@ -1,5 +1,9 @@
 # Nudge
 
+<p align="center">
+  <img src="docs/images/hero.png" alt="Nudge — AI-powered reminders for macOS menu bar" width="100%" />
+</p>
+
 > macOS のメニューバーから純正 Apple リマインダーをすばやく操作する、AI 搭載の常駐アプリ。
 
 EventKit で純正リマインダーを読み書きするので、書いたタスクは iCloud 経由で iPhone / iPad / Mac の純正アプリにそのまま同期されます。Nudge を消しても、データは純正リマインダー.app に残ります。
