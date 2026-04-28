@@ -6,6 +6,7 @@
   font-family: -apple-system, "SF Pro Text", "Hiragino Kaku Gothic ProN", "Helvetica Neue", sans-serif;
   color: #2c2c2e;
   -webkit-font-smoothing: antialiased;
+  text-align: left;
 }
 
 .hp-shadow {
