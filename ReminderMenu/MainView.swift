@@ -325,23 +325,25 @@ struct MainView: View {
 
             Spacer()
 
-            // カレンダービューはスマートリスト「すべて」でのみ提供
-            if store.selectedSmartList == .all {
-                Button {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
-                        listViewMode = listViewMode.toggled()
+            Button {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                    let next = listViewMode.toggled()
+                    // カレンダーに切り替えるときは選択を「すべて」に揃える
+                    if next == .calendar, store.selectedSmartList != .all {
+                        store.selection = .smart(.all)
                     }
-                } label: {
-                    Image(systemName: listViewMode.toggled().systemImage)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(listViewMode == .calendar ? MRTheme.accent : Color.secondaryText)
-                        .frame(width: 26, height: 26)
-                        .background(.ultraThinMaterial, in: Circle())
-                        .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 0.5))
+                    listViewMode = next
                 }
-                .buttonStyle(.plain)
-                .help(listViewMode.help)
+            } label: {
+                Image(systemName: listViewMode.toggled().systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(listViewMode == .calendar ? MRTheme.accent : Color.secondaryText)
+                    .frame(width: 26, height: 26)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 0.5))
             }
+            .buttonStyle(.plain)
+            .help(listViewMode.help)
 
             Button {
                 store.showCompleted.toggle()
