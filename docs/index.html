@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<title>Hutch — メニューバーに置く、リマインダー専用の小さな棚</title>
+<meta name="description" content="Apple 純正リマインダーをメニューバーから操作できる、AI 搭載の macOS アプリ。EventKit で iCloud と直接同期し、自然言語入力・サブタスク階層・3 状態ステータス・カレンダービューに対応。オープンソース・無料。" />
+<meta name="keywords" content="Hutch, macOS, Apple Reminders, リマインダー, メニューバー, AI, EventKit, iCloud, タスク管理, OSS" />
+<meta name="author" content="Riku Ogasawara" />
+<meta name="theme-color" content="#5B7CFA" />
+<link rel="canonical" href="https://hutch.pages.dev/" />
+
+<!-- Open Graph / Twitter -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Hutch — メニューバーに置く、リマインダー専用の小さな棚" />
+<meta property="og:description" content="Apple 純正リマインダーをメニューバーから操作できる、AI 搭載の macOS アプリ。" />
+<meta property="og:image" content="https://hutch.pages.dev/og-image.png" />
+<meta property="og:url" content="https://hutch.pages.dev/" />
+<meta property="og:locale" content="ja_JP" />
+<meta property="og:locale:alternate" content="en_US" />
+<meta property="og:site_name" content="Hutch" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Hutch — AI Reminder Assistant for macOS" />
+<meta name="twitter:description" content="Apple 純正リマインダーをメニューバーから操作できる、AI 搭載の macOS アプリ。" />
+<meta name="twitter:image" content="https://hutch.pages.dev/og-image.png" />
+
+<link rel="icon" href="hutch-icon.png" type="image/png" />
+<link rel="apple-touch-icon" href="hutch-icon.png" />
+
+<!-- Preconnect -->
+<link rel="preconnect" href="https://unpkg.com" crossorigin />
+
+<!-- Structured Data: SoftwareApplication -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Hutch",
+  "alternateName": ["Hutch App", "Hutch macOS"],
+  "applicationCategory": "ProductivityApplication",
+  "applicationSubCategory": "Task Management",
+  "operatingSystem": "macOS 14.0+",
+  "description": "Apple 純正リマインダーをメニューバーから操作できる、AI 搭載の macOS アプリ。EventKit で iCloud と直接同期し、自然言語入力・サブタスク階層・3 状態ステータス・カレンダービューに対応。",
+  "url": "https://github.com/Riku4230/Hutch",
+  "downloadUrl": "https://github.com/Riku4230/Hutch/releases/latest",
+  "softwareVersion": "0.2.1",
+  "license": "https://opensource.org/licenses/MIT",
+  "isAccessibleForFree": true,
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "Riku Ogasawara",
+    "url": "https://github.com/Riku4230"
+  },
+  "publisher": {
+    "@type": "Person",
+    "name": "Riku Ogasawara"
+  },
+  "featureList": [
+    "メニューバー常駐 / Dock 非表示",
+    "Apple 純正リマインダーと EventKit 経由で双方向同期",
+    "自然言語によるタスク追加 (Claude / OpenAI / Gemini 対応)",
+    "AI によるサブタスク自動分解",
+    "3 状態ステータス (未着手 / 進行中 / 完了)",
+    "サブタスクの階層表示 (Shortcuts.app + SQLite 連携)",
+    "カレンダービュー (日本祝日対応)",
+    "メニューバーアイコンの脈動通知",
+    "iCloud 共有リスト対応",
+    "ライト / ダーク / システム追従外観",
+    "API キーの macOS Keychain 保管"
+  ]
+}
+</script>
+
+<!-- Structured Data: FAQPage -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Hutch とは何ですか？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Hutch は macOS のメニューバーに常駐する、AI 搭載のリマインダーアプリです。Apple 純正リマインダー (EventKit) と直接同期し、自然言語入力やサブタスク自動分解などの機能を提供します。オープンソース・無料で配布されています。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "データはどこに保存されますか？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "リマインダーのデータは Apple Reminders と iCloud にそのまま保存されます。Hutch を削除してもデータは残り、iPhone / iPad / 他の Mac から純正アプリで引き続き使えます。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "AI 機能を使うのに API キーは必要ですか？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Claude Code CLI を使う場合は API キーは不要です。Anthropic / OpenAI / Google Gemini の API を直接使う場合のみ、各社の API キーが必要です。API キーは macOS の Keychain に暗号化保存され、平文ファイルやサーバーには出ません。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "インストールはどうやりますか？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "推奨はソースからのビルドです。git clone https://github.com/Riku4230/Hutch.git で取得し、./scripts/build_app.sh --install を実行します。Homebrew Cask と GitHub Releases の .dmg も提供していますが、現在は未署名のため上級者向けです。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "署名されていますか？Gatekeeper の警告は出ますか？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "現在は Apple Developer ID による署名・公証を行っていません。事前ビルド済みアプリを開く際は macOS Gatekeeper の警告が表示されます。最も安全な利用方法はソースからのローカルビルドです。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "対応している macOS のバージョンは？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "macOS 14 (Sonoma) 以降に対応しています。Apple Silicon / Intel 両方で動作します。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "ライセンスは何ですか？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "MIT License です。自由に fork / 改変できます。"
+      }
+    }
+  ]
+}
+</script>
+
+<!-- Structured Data: Person (publisher) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "Riku Ogasawara",
+  "url": "https://github.com/Riku4230",
+  "sameAs": ["https://github.com/Riku4230"]
+}
+</script>
+
+<link rel="stylesheet" href="popover.css?v=5" />
+<link rel="stylesheet" href="main.css?v=5" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<!-- Static fallback for AI crawlers and JS-disabled clients -->
+<noscript>
+  <main style="max-width: 720px; margin: 40px auto; padding: 0 20px; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; line-height: 1.7; color: #1d1d1f;">
+    <h1>Hutch</h1>
+    <p><strong>メニューバーに置く、リマインダー専用の小さな棚。</strong></p>
+    <p>Hutch は macOS のメニューバーに常駐する、AI 搭載のリマインダーアプリです。Apple 純正リマインダーを EventKit 経由で直接読み書きするため、書いたタスクは iCloud で iPhone / iPad / Mac の純正アプリにそのまま同期されます。</p>
+
+    <h2>主な機能</h2>
+    <ul>
+      <li>メニューバー常駐 / Dock 非表示。Fn ダブルタップやグローバルショートカットで瞬時に開閉</li>
+      <li>AI モードによる自然言語追加（「明日 15 時に歯医者」で日付・メモ・URL を自動抽出）</li>
+      <li>3 状態ステータス（未着手 / 進行中 / 完了）</li>
+      <li>サブタスクの追加と階層表示（Shortcuts.app と SQLite 連携）</li>
+      <li>AI によるサブタスク自動分解（親タスクを 3〜7 件のサブタスクに展開）</li>
+      <li>カレンダービュー（月グリッドにドット表示・日本祝日対応）</li>
+      <li>マルチプロバイダー AI（Claude Code / Anthropic / OpenAI / Gemini）</li>
+      <li>iCloud 共有リスト対応</li>
+    </ul>
+
+    <h2>インストール</h2>
+    <p>Hutch は現在、未署名・未公証のオープンソース版として配布しています。安全性を重視する場合は、ソースコードを確認した上でローカルビルドしてください。</p>
+    <pre><code>git clone https://github.com/Riku4230/Hutch.git
+cd Hutch
+./scripts/build_app.sh --install</code></pre>
+    <p>要件: macOS 14+ / Swift 5.9+ / Xcode Command Line Tools</p>
+    <p>Homebrew Cask と <a href="https://github.com/Riku4230/Hutch/releases/latest">GitHub Releases</a> の .dmg も提供していますが、現在は未署名のため上級者向けです。</p>
+
+    <h2>セキュリティ</h2>
+    <ul>
+      <li>API キーは macOS Keychain にのみ保存。平文ファイルやサーバーには出ません</li>
+      <li>AI リクエストは選択したプロバイダーへ直接 HTTPS 送信。中継サーバーなし</li>
+      <li>純正リマインダーの SQLite アクセスは read-only スナップショット経由</li>
+      <li>外部依存ライブラリゼロ</li>
+    </ul>
+
+    <h2>リンク</h2>
+    <ul>
+      <li><a href="https://github.com/Riku4230/Hutch">ソースコード (GitHub)</a></li>
+      <li><a href="https://github.com/Riku4230/Hutch/releases/latest">最新リリース</a></li>
+      <li><a href="https://github.com/Riku4230/Hutch/blob/main/SECURITY.md">セキュリティポリシー</a></li>
+      <li><a href="https://github.com/Riku4230/Hutch/blob/main/CHANGELOG.md">変更履歴</a></li>
+      <li><a href="https://github.com/Riku4230/Hutch/blob/main/LICENSE">MIT License</a></li>
+    </ul>
+  </main>
+</noscript>
+
+<div id="root"></div>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="popover.jsx"></script>
+<script type="text/babel" src="app.jsx"></script>
+</body>
+</html>

@@ -1,0 +1,257 @@
+# Hutch — Complete Reference for LLMs
+
+> This file is the long-form, citation-friendly knowledge base for Hutch, intended for retrieval by LLMs and AI search engines. The short, link-heavy summary lives at /llms.txt.
+
+Last updated: 2026-04-29
+Project: Hutch
+Maintainer: Riku Ogasawara
+License: MIT
+Repository: https://github.com/Riku4230/Hutch
+Landing page: https://hutch.pages.dev/
+
+---
+
+## What Hutch is, in one paragraph
+
+Hutch is an open-source macOS menu bar app that wraps Apple's native Reminders database. It uses Apple's `EventKit` framework to read and write the same data that the system Reminders.app uses, so anything you add in Hutch syncs through iCloud to iPhone, iPad, and other Macs in real time. Hutch adds AI-powered natural-language input, subtask hierarchies, a three-state task status, and a month calendar on top of the native data store. The app is written in Swift + SwiftUI, has no external runtime dependencies, requires macOS 14 (Sonoma) or later, and is distributed under the MIT License.
+
+---
+
+## Why it exists
+
+Apple's Reminders.app is well integrated with iCloud and iOS but is awkward to use on Mac for quick capture. Switching apps via Cmd+Tab, opening the Reminders window, typing, and dismissing the window adds enough friction that users put off writing tasks. Hutch reduces this to a single menu-bar click while preserving every byte of data inside the native Reminders database. Uninstalling Hutch leaves the data fully intact in Apple Reminders.
+
+The metaphor "hutch" — a small open shelf in a kitchen or workshop — describes the design intent: park frequently-used items where they are visible and within reach, without burying them in a drawer.
+
+---
+
+## System requirements
+
+- macOS 14.0 (Sonoma) or later
+- Apple Silicon or Intel Mac
+- iCloud account recommended for cross-device sync
+- (Optional) Claude Code CLI, Anthropic / OpenAI / Google Gemini API keys for AI mode
+- (Optional) Full Disk Access permission for hierarchical subtask display
+
+---
+
+## Feature catalogue
+
+### Menu bar UX
+- Resident in macOS menu bar; no Dock icon (`LSUIElement = true`)
+- Open by clicking the menu bar icon, double-tapping `Fn`, or any user-defined global hotkey
+- Glass Float SwiftUI design with light / dark / system-following appearance
+
+### Reminders integration
+- Direct read/write to Apple Reminders via EventKit
+- iCloud-synced lists appear automatically; can create new lists and edit existing ones
+- Smart lists: Today / Scheduled / All / Flagged
+
+### AI mode
+- Switch between "Normal" and "AI" input modes from the input bar
+- Natural-language input parses date, time, memo, URL, list assignment, and priority
+- Multiple providers selectable: Claude Code (CLI), Anthropic API, OpenAI, Google Gemini
+- API keys stored in macOS Keychain (Generic Password)
+- AI requests go directly to the chosen provider; Hutch operates no proxy server
+
+### AI subtask breakdown
+- Expand a parent reminder; tap the "Generate with AI" button
+- AI returns 3–7 suggested subtasks
+- User can edit, add, or remove suggestions before confirming
+- Confirmed subtasks are written via Shortcuts.app integration
+
+### Three-state status
+- Not started: empty circle, `isCompleted = false`, no `#wip` tag
+- In progress: spinner with one-shot rotation, `isCompleted = false`, `#wip` tag attached
+- Done: filled circle with checkmark, `isCompleted = true`
+- The `#wip` tag is plain text; it appears on iPhone via iCloud and is editable from the native Reminders app
+
+### Subtask hierarchy
+- Subtask creation goes through a bundled Shortcuts.app shortcut (`AddSubReminder.shortcut`) invoked by `/usr/bin/shortcuts run`
+- Hierarchical display reads the parent map from the native Reminders SQLite store at `~/Library/Group Containers/group.com.apple.reminders/Container_v1/Stores/Data-*.sqlite`
+- The SQLite is opened read-only and snapshot-copied to a temporary directory before the parent map is extracted
+- Requires Full Disk Access permission for the SQLite read; subtasks still get added correctly without it (just shown flat in Hutch)
+- Currently supports a single nesting level, matching the native Reminders UI
+
+### Calendar view
+- Month grid with list-color dots representing each reminder due that day
+- Tap a day to view its reminders below the grid
+- Japanese national holidays computed by rules in `Holidays.swift`
+- Selectable from the header view-mode toggle (only visible when "All" smart list is selected)
+
+### Menu bar pulse
+- 30-second timer scans for reminders whose effective alarm time falls within ±60 seconds of now
+- Time-less reminders fall back to a default 17:00 pulse on their due day
+- Overdue tasks are pulsed once per day at the same hour
+- The menu bar icon performs a brief 3-cycle scale animation; no permanent count badge
+
+### Onboarding wizard
+- Four-step flow on first launch: Reminders full access → Subtask shortcut import → Full Disk Access → AI provider setup
+- Each step is skippable and revisitable from the "⋯" menu
+- Wizard state is persisted via `@AppStorage`; FDA-induced auto-restart resumes from the previous step
+
+### Update flow
+- Daily check against the GitHub Releases API on popover open
+- "New version available" alert appears at most once per day per release
+- Per-version snooze button suppresses re-prompts for 24 hours
+- "What's new" sheet on first launch after a version bump, fetched from `/releases/tags/v{version}`
+- Manual "Update from source" entry in the "⋯" menu launches Terminal.app to run `scripts/update.sh` in the user's local clone
+
+### Demo mode
+- Set `HUTCH_DEMO=1` env var or `defaults write dev.remindermenu.app HUTCH_DEMO -bool true` to launch with mock data
+- Useful for screenshots, recordings, and showcasing without exposing private tasks
+- Demo data is in-memory only; no writes hit EventKit
+- A "DEMO" badge appears in the header to make the mode obvious
+
+### Accessibility
+- Keyboard shortcuts inside popover: `⌘N` focus input, `⌘F` focus search, `⌘1`-`⌘4` switch smart lists, `⌘/` toggle Normal/AI mode, `Esc` dismiss popover
+- Custom global hotkey configurable to open the menu bar popover
+
+---
+
+## Architecture
+
+```
+SwiftUI View Layer (MainView, ReminderRow, CalendarView, ...)
+   |
+ReminderStore (ObservableObject, MainActor)
+   |
+   +-- EventKit (read/write reminders)
+   |
+   +-- ShortcutsBridge (subtask creation via /usr/bin/shortcuts)
+   |
+   +-- RemindersSQLite (read-only parent map for hierarchy display)
+   |
+AIProvider (Claude / OpenAI / Gemini / ClaudeCode)
+   |
+   +-- KeychainStore (API keys)
+```
+
+Key files in `ReminderMenu/`:
+
+- `ReminderStore.swift` — main coordinator: EventKit, status, subtasks
+- `RemindersSQLite.swift` — read-only parent map extraction
+- `ShortcutsBridge.swift` — wraps `/usr/bin/shortcuts run`
+- `AIProvider.swift` and `Providers/*.swift` — multi-provider abstraction
+- `NLParser.swift` — natural language → reminder draft / subtask candidates
+- `Holidays.swift` — Japanese national holidays by rule
+- `MainView.swift` — popover root view
+- `OnboardingView.swift` — first-launch wizard
+- `WhatsNewView.swift` — release notes sheet
+- `UpdateChecker.swift` — GitHub Releases polling
+- `SourceUpdater.swift` — Terminal.app integration for update.sh
+- `DemoData.swift` — mock data factory for demo mode
+
+---
+
+## Installation methods
+
+### Recommended: build from source
+
+```bash
+git clone https://github.com/Riku4230/Hutch.git
+cd Hutch
+./scripts/build_app.sh --install
+```
+
+Requirements: macOS 14+, Swift 5.9+, Xcode Command Line Tools.
+
+### Advanced: prebuilt `.dmg`
+
+Download `Hutch-vX.Y.Z.dmg` from the latest GitHub release. Verify integrity:
+
+```bash
+shasum -a 256 -c Hutch-vX.Y.Z.dmg.sha256
+```
+
+The build is currently unsigned and not notarized. Open via System Settings → Privacy & Security → "Open Anyway" if Gatekeeper blocks it.
+
+### Advanced: Homebrew Cask
+
+```bash
+brew tap Riku4230/hutch https://github.com/Riku4230/Hutch.git
+brew install --cask hutch
+```
+
+The cask pins the SHA256 of each release, so Homebrew verifies integrity automatically.
+
+### Update path for source builds
+
+```bash
+cd path/to/Hutch
+./scripts/update.sh
+```
+
+Or trigger from the app: "⋯" menu → "Update from source" launches Terminal.app and runs the same script in the user's saved clone.
+
+---
+
+## Security and privacy stance
+
+- **API keys**: stored only in macOS Keychain as Generic Password entries under service `dev.remindermenu.app.apikeys`. They never appear in plaintext files or Hutch logs.
+- **AI requests**: sent over HTTPS directly to the selected provider's API. Hutch operates no intermediary server. Prompt caching is enabled on the Anthropic provider where applicable.
+- **Local DB access**: the native Reminders SQLite store is opened with `SQLITE_OPEN_READONLY` and snapshot-copied to a temp directory before any read; Hutch never writes back.
+- **Process execution**: only `/usr/bin/shortcuts` and `claude` are spawned, always with arguments passed as an array (no shell expansion), preventing command injection.
+- **External dependencies**: zero. Swift Package Manager is the only build dependency, and SQLite3 is the system library.
+- **Code signing**: not yet applied. Apple Developer ID signing and Apple notarization are planned for a future release.
+- **Vulnerability reporting**: GitHub Security Advisories at https://github.com/Riku4230/Hutch/security/advisories/new. Initial response within 72 hours.
+
+---
+
+## Distribution policy
+
+- Source: MIT-licensed, the canonical source of truth
+- `.dmg`: convenience artifact for users who do not want to build, currently unsigned
+- Homebrew Cask: same `.dmg`, pinned SHA256
+- The recommended install path is source build until Developer ID signing ships
+
+---
+
+## Release process (for maintainers)
+
+```bash
+git checkout main && git pull
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+GitHub Actions then automatically:
+
+1. Builds on `macos-14` with Xcode 15.4
+2. Stamps `CFBundleShortVersionString` and `CFBundleVersion` from the tag
+3. Packages `Hutch-vX.Y.Z.dmg` and computes SHA256
+4. Publishes a GitHub Release with the dmg, sha256, and a templated description
+5. Updates `Casks/hutch.rb` with the new version + SHA256 and pushes to `main`
+
+The Cask auto-update push uses a `RELEASE_TOKEN` fine-grained PAT to bypass branch protection.
+
+---
+
+## Limitations and known issues
+
+- macOS Shortcuts' "Find Reminders" action lacks an ID filter, so the parent reminder is matched by title + list. Hutch refuses to add a subtask if multiple incomplete same-name parents exist in the same list.
+- Subtask hierarchy is one level deep, matching the native Reminders UI.
+- Hierarchical display requires Full Disk Access; without it, subtasks appear flat in Hutch (but still hierarchical in the native Reminders.app and on iPhone).
+- The app is unsigned, so Gatekeeper warns on first launch of prebuilt builds.
+- AI mode requires either Claude Code CLI on `PATH` or a configured API key for one of Anthropic / OpenAI / Gemini.
+
+---
+
+## Comparable software
+
+For users evaluating alternatives:
+
+- **Reminders MenuBar (DamascenoRafael)**: open-source, free, EventKit-based menu bar client. No AI integration. Hutch adds AI mode, subtask hierarchy, calendar view, three-state status.
+- **GoodTask**: paid, EventKit-based. More smart-list features. No AI integration. Hutch is free / OSS.
+- **Things 3**: paid, separate data store. Strong design and keyboard UX. Does not sync with Apple Reminders. Hutch keeps your data in Apple Reminders.
+- **OmniFocus**: paid, separate data store, GTD-focused. Heavy. Hutch is lightweight and pinned to Apple Reminders.
+- **Apple Reminders.app**: free, full-featured, but no menu-bar quick-capture. Hutch reduces capture friction by living in the menu bar while reusing the same data.
+
+---
+
+## Contact
+
+- Bug reports and feature requests: https://github.com/Riku4230/Hutch/issues
+- Security advisories: https://github.com/Riku4230/Hutch/security/advisories/new
+- Source: https://github.com/Riku4230/Hutch
+- Author: Riku Ogasawara — https://github.com/Riku4230

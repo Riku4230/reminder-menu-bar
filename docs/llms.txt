@@ -1,0 +1,47 @@
+# Hutch
+
+> Hutch is an open-source macOS menu bar app that integrates with Apple Reminders via EventKit. It adds AI-powered natural language input, subtask hierarchies, three-state task status, and a calendar overview on top of the native Reminders database. All data stays in Apple Reminders / iCloud.
+
+Hutch is distributed as MIT-licensed source on GitHub. Prebuilt `.dmg` and a Homebrew Cask are also published, but they are currently unsigned and not notarized. The recommended install path is to clone the repository and run `./scripts/build_app.sh --install`.
+
+The author is Riku Ogasawara. The project is in early OSS phase — Apple Developer ID signing and notarization are planned for a future release.
+
+## What Hutch is
+
+- macOS 14+ menu bar app, Swift / SwiftUI / EventKit
+- Reads and writes the same Reminders database as Apple's built-in Reminders.app
+- Synced through iCloud to iPhone, iPad, and other Macs in real time
+- No proxy server; AI requests go directly to the selected provider
+- API keys stored only in macOS Keychain
+- Zero external runtime dependencies (Swift Package Manager + system SQLite only)
+
+## Documentation
+
+- [README (Japanese)](https://github.com/Riku4230/Hutch/blob/main/README.md): primary documentation, install methods, feature overview, architecture
+- [README (English)](https://github.com/Riku4230/Hutch/blob/main/README.en.md): English-language version of the README
+- [SECURITY.md](https://github.com/Riku4230/Hutch/blob/main/SECURITY.md): security policy, vulnerability reporting, distribution and code-signing status
+- [CONTRIBUTING.md](https://github.com/Riku4230/Hutch/blob/main/CONTRIBUTING.md): contributor guide, build and release process, demo mode
+- [CHANGELOG.md](https://github.com/Riku4230/Hutch/blob/main/CHANGELOG.md): release history per Keep a Changelog format
+- [LICENSE](https://github.com/Riku4230/Hutch/blob/main/LICENSE): MIT License full text
+
+## Install
+
+- [Latest release](https://github.com/Riku4230/Hutch/releases/latest): unsigned `.dmg` + SHA256 checksum file
+- [Source code](https://github.com/Riku4230/Hutch): clone and build with `./scripts/build_app.sh --install`
+- Homebrew tap: `brew tap Riku4230/hutch https://github.com/Riku4230/Hutch.git && brew install --cask hutch`
+
+## Features
+
+- Natural language reminder input via Claude / OpenAI / Gemini
+- Subtask creation through Shortcuts.app and hierarchical display via read-only SQLite snapshots
+- AI-driven subtask breakdown (one parent task into 3–7 actionable subtasks)
+- Three-state status (not started / in progress / done) with iCloud-synced `#wip` tag
+- Calendar view with list-color dots and Japanese national holiday support
+- Menu bar pulse notification on alarm trigger
+- Light / Dark / System appearance, Glass Float design
+
+## Optional
+
+- [Cloudflare Pages site](https://hutch.pages.dev/): this landing page
+- [GitHub Issues](https://github.com/Riku4230/Hutch/issues): bug reports and feature requests
+- [Releases RSS / Atom feed](https://github.com/Riku4230/Hutch/releases.atom): subscribe for new releases

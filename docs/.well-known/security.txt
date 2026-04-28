@@ -1,0 +1,5 @@
+Contact: https://github.com/Riku4230/Hutch/security/advisories/new
+Expires: 2027-04-29T00:00:00.000Z
+Preferred-Languages: ja, en
+Canonical: https://hutch.pages.dev/.well-known/security.txt
+Policy: https://github.com/Riku4230/Hutch/blob/main/SECURITY.md
