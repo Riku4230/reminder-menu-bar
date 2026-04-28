@@ -14,11 +14,6 @@
 [![Swift](https://img.shields.io/badge/Swift-5.9+-orange?style=flat-square&logo=swift)](https://swift.org)
 [![Stars](https://img.shields.io/github/stars/Riku4230/Hutch?style=flat-square&color=4f7bf3)](https://github.com/Riku4230/Hutch/stargazers)
 
-[**Install**](#-install) ·
-[**Features**](#-features) ·
-[**Usage**](#-usage) ·
-[**Architecture**](#-architecture)
-
 </div>
 
 ---
@@ -27,7 +22,7 @@ Hutch reads and writes the **native** Apple Reminders database directly through 
 
 On top of that foundation, Hutch adds **AI input**, **subtask hierarchies**, **three-state status**, and a **calendar overview** — the things that are missing when you want to "open, jot, and close" on your Mac.
 
-## ⚡ Quick start
+## Quick start
 
 ```bash
 brew tap Riku4230/hutch https://github.com/Riku4230/Hutch.git
@@ -36,7 +31,17 @@ brew install --cask hutch
 
 > One line. No Homebrew? Grab the `.dmg` from [Releases](https://github.com/Riku4230/Hutch/releases/latest).
 
-## ✨ Features
+## Why "Hutch"?
+
+Hutch is **a tiny shelf you keep within arm's reach while you work** — built for reminders.
+
+The native Reminders app on macOS hides everything behind "Cmd+Tab → Reminders → type → close." Just enough friction that you put it off and forget. Like getting up from your desk to open a far cupboard.
+
+A *hutch* is a small storage shelf in a kitchen or workshop — the kind you fill with daily-use items so they're visible and within reach. You don't bury them in a drawer.
+
+That's the whole idea: park your reminders on a shelf in your menu bar. **Same data as the native app, just stored within reach.** No need to migrate to Things, OmniFocus, or any other separate database.
+
+## Features
 
 | | |
 |---|---|
@@ -51,7 +56,7 @@ brew install --cask hutch
 | 🌗 **Light / Dark / System** | Glass Float design that switches instantly. |
 | ☁️ **iCloud-shared lists** | Lists you created in the native Reminders app work as-is. |
 
-## 🚀 Install
+## Install
 
 ### Homebrew (recommended)
 
@@ -76,7 +81,7 @@ cd Hutch
 
 Requires macOS 14+, Swift 5.9+, and Xcode command-line tools.
 
-## 🧭 First launch
+## First launch
 
 The in-app onboarding wizard walks you through four steps:
 
@@ -87,7 +92,7 @@ The in-app onboarding wizard walks you through four steps:
 
 Each step is skippable. You can revisit them anytime from the "⋯" menu.
 
-## 🤖 AI mode
+## AI mode
 
 Switch the input bar to `AI` mode and type freely.
 
@@ -113,18 +118,9 @@ API keys are stored only in macOS Keychain (Generic Password). They never touch 
 
 ### AI subtask breakdown
 
-Expand a parent reminder and tap **`✨ Generate with AI`** → review the suggested 3–7 subtasks → edit, add, or remove them → confirm to add them all.
+Expand a parent reminder and tap **`Generate with AI`** → review the suggested 3–7 subtasks → edit, add, or remove them → confirm to add them all.
 
-## 🌳 How subtasks work
-
-EventKit doesn't expose a public API for subtask relationships, so Hutch uses two indirect paths:
-
-- **Write**: a bundled Shortcuts.app shortcut (`AddSubReminder.shortcut`) is invoked through `/usr/bin/shortcuts run`
-- **Read**: the native Reminders SQLite store at `~/Library/Group Containers/group.com.apple.reminders/...` is opened read-only and snapshot-copied to a temp directory before the parent map is extracted
-
-See [Subtask setup](#-subtask-setup) for the manual steps.
-
-## 🎯 Three-state status
+## Three-state status
 
 Tap the checkbox to cycle through three states:
 
@@ -136,11 +132,14 @@ Tap the checkbox to cycle through three states:
 
 The `#wip` tag also appears on iPhone via iCloud and can be edited from the native Reminders app. Rename it via `progressTag` in `ReminderStore.swift`.
 
-## 🌐 Subtask setup
+## Subtasks
 
-The onboarding wizard handles this. To set it up later, manually:
+EventKit doesn't expose a public API for subtask relationships, so Hutch uses two indirect paths:
 
-### 1. Import the shortcut
+- **Write**: a bundled Shortcuts.app shortcut (`AddSubReminder.shortcut`) is invoked through `/usr/bin/shortcuts run`
+- **Read**: the native Reminders SQLite store at `~/Library/Group Containers/group.com.apple.reminders/...` is opened read-only and snapshot-copied to a temp directory before the parent map is extracted
+
+The onboarding wizard handles setup. To do it manually:
 
 ```bash
 open ~/Applications/Hutch.app/Contents/Resources/AddSubReminder.shortcut
@@ -148,13 +147,13 @@ open ~/Applications/Hutch.app/Contents/Resources/AddSubReminder.shortcut
 
 In the Shortcuts.app dialog, click **"Add Shortcut"**. Don't rename it — it must stay as `ReminderMenu Add Subtask` for backward compatibility.
 
-### 2. Hierarchy view requires Full Disk Access
+Hierarchical view requires **Full Disk Access**:
 
 ```
 System Settings → Privacy & Security → Full Disk Access → toggle on Hutch
 ```
 
-Without this permission, subtasks still get added correctly — they just appear flat inside Hutch. The native Reminders app and iPhone display them hierarchically as expected.
+Without this permission, subtasks still get added correctly — they just appear flat inside Hutch.
 
 ### Limitations
 
@@ -162,7 +161,7 @@ Without this permission, subtasks still get added correctly — they just appear
 - If multiple incomplete reminders share the same title in the same list, Hutch refuses to add a subtask to avoid attaching to the wrong parent
 - Only one nesting level is supported (matching the native Reminders UI)
 
-## 🏗 Architecture
+## Architecture
 
 <details>
 <summary>Diagram and key files</summary>
@@ -209,17 +208,7 @@ Without this permission, subtasks still get added correctly — they just appear
 
 </details>
 
-## 💡 Why "Hutch"?
-
-Hutch is **a tiny shelf you keep within arm's reach while you work** — built for reminders.
-
-The native Reminders app on macOS hides everything behind "Cmd+Tab → Reminders → type → close." Just enough friction that you put it off and forget. Like getting up from your desk to open a far cupboard.
-
-A *hutch* is a small storage shelf in a kitchen or workshop — the kind you fill with daily-use items so they're visible and within reach. You don't bury them in a drawer.
-
-That's the whole idea: park your reminders on a shelf in your menu bar. **Same data as the native app, just stored within reach.** No need to migrate to Things, OmniFocus, or any other separate database.
-
-## 🛠 Development
+## Development
 
 ```bash
 # Debug build
@@ -234,40 +223,18 @@ pkill -f Hutch.app && open ~/Applications/Hutch.app
 
 No external dependencies (Swift Package Manager only; SQLite3 is provided by the system).
 
-### Releasing
-
-```bash
-git tag v0.X.Y
-git push origin v0.X.Y
-```
-
-GitHub Actions then automatically:
-1. Builds on macOS 14
-2. Packages the `.dmg` and computes its SHA256
-3. Publishes a GitHub Release
-4. Updates the Homebrew Cask version / sha256 on `main`
-
-## 🤝 Contributing
+## Contributing
 
 PRs and issues welcome.
 
-- Bug reports: [open an issue](https://github.com/Riku4230/Hutch/issues/new)
-- Feature requests: [Discussions](https://github.com/Riku4230/Hutch/discussions) or an issue
+- Bug reports and feature requests: [open an issue](https://github.com/Riku4230/Hutch/issues/new)
 - Security: see [SECURITY.md](SECURITY.md)
 
-## 📄 License
+## License
 
 MIT License — fork and modify freely. See [LICENSE](LICENSE).
 
-## 🙏 Credits
+## Credits
 
-- Natural language understanding: [Anthropic Claude](https://www.anthropic.com/) / [OpenAI](https://openai.com/) / [Google Gemini](https://ai.google.dev/)
+- LLMs: [Anthropic Claude](https://www.anthropic.com/) / [OpenAI](https://openai.com/) / [Google Gemini](https://ai.google.dev/)
 - App icon: `Resources/AppIcon.icns`
-
----
-
-<div align="center">
-
-Made with ❤️ for the macOS Reminders ecosystem
-
-</div>
