@@ -106,6 +106,7 @@ struct MainView: View {
     @EnvironmentObject private var app: AppCoordinator
     @EnvironmentObject private var hotKeys: GlobalHotKeyManager
     @EnvironmentObject private var aiSettings: AISettings
+    @EnvironmentObject private var updateChecker: UpdateChecker
 
     @FocusState private var inputFocused: Bool
 
@@ -277,6 +278,24 @@ struct MainView: View {
                 .environmentObject(store)
                 .environmentObject(app)
                 .preferredColorScheme(app.appearance.colorScheme)
+        }
+        .alert(
+            "新しいバージョンが利用可能です",
+            isPresented: Binding(
+                get: { updateChecker.availableUpdate != nil },
+                set: { if !$0 { updateChecker.availableUpdate = nil } }
+            ),
+            presenting: updateChecker.availableUpdate
+        ) { update in
+            Button("ダウンロードページを開く") {
+                NSWorkspace.shared.open(update.releaseURL)
+                updateChecker.snooze(update.latestVersion)
+            }
+            Button("あとで") {
+                updateChecker.snooze(update.latestVersion)
+            }
+        } message: { update in
+            Text("Hutch v\(update.latestVersion) が利用可能です。\n現在のバージョン: v\(Bundle.main.shortVersion)")
         }
     }
 
@@ -1255,6 +1274,19 @@ struct MainView: View {
                 ModernMenuRow(icon: "arrow.up.forward.app", label: "リマインダーアプリを開く") {
                     showMoreMenu = false
                     store.openRemindersApp()
+                }
+
+                ModernMenuDivider()
+
+                // About / バージョン情報
+                ModernMenuRow(
+                    icon: "info.circle",
+                    label: "Hutch v\(Bundle.main.shortVersion) · GitHub"
+                ) {
+                    showMoreMenu = false
+                    if let url = URL(string: "https://github.com/Riku4230/Hutch") {
+                        NSWorkspace.shared.open(url)
+                    }
                 }
             }
         }
