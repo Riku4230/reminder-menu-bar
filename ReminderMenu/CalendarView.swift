@@ -190,6 +190,10 @@ struct CalendarView: View {
         let store: ReminderStore
         let onTap: () -> Void
 
+        private var holidayName: String? {
+            JapaneseHolidays.name(for: day.date)
+        }
+
         var body: some View {
             Button(action: onTap) {
                 VStack(spacing: 2) {
@@ -206,6 +210,14 @@ struct CalendarView: View {
                                 }
                             }
                         )
+
+                    if let holidayName, day.isInMonth {
+                        Text(holidayName)
+                            .font(.system(size: 7.5, weight: .semibold))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .foregroundStyle(Color(red: 0.86, green: 0.36, blue: 0.36))
+                    }
 
                     dotRow
                 }
@@ -245,7 +257,9 @@ struct CalendarView: View {
             if isSelected { return .white }
             if !day.isInMonth { return Color.tertiaryText.opacity(0.45) }
             if day.isToday { return MRTheme.accent }
-            if day.weekday == 1 { return Color(red: 0.86, green: 0.36, blue: 0.36) }
+            if day.weekday == 1 || holidayName != nil {
+                return Color(red: 0.86, green: 0.36, blue: 0.36)
+            }
             if day.weekday == 7 { return Color(red: 0.36, green: 0.56, blue: 0.86) }
             return Color.primaryText
         }
@@ -334,7 +348,10 @@ struct CalendarView: View {
         let f = DateFormatter()
         f.locale = Locale(identifier: "ja_JP")
         f.dateFormat = "M月d日(E)"
-        let suffix = f.string(from: date)
+        var suffix = f.string(from: date)
+        if let holiday = JapaneseHolidays.name(for: date) {
+            suffix += " · \(holiday)"
+        }
         if days == 1 { return "明日 · " + suffix }
         if days == 2 { return "明後日 · " + suffix }
         return suffix
@@ -342,7 +359,9 @@ struct CalendarView: View {
 
     private func weekdayHeaderColor(for date: Date) -> Color {
         let weekday = calendar.component(.weekday, from: date)
-        if weekday == 1 { return Color(red: 0.86, green: 0.36, blue: 0.36) }
+        if weekday == 1 || JapaneseHolidays.name(for: date) != nil {
+            return Color(red: 0.86, green: 0.36, blue: 0.36)
+        }
         if weekday == 7 { return Color(red: 0.36, green: 0.56, blue: 0.86) }
         return Color.secondaryText
     }
