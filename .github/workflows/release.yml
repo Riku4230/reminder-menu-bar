@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag (e.g. v0.2.0). Leave blank to use HEAD short SHA.'
+        required: false
+
+jobs:
+  build:
+    name: Build & package macOS app
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            VERSION="${GITHUB_REF##*/}"
+          elif [[ -n "${{ github.event.inputs.tag }}" ]]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION="dev-$(git rev-parse --short HEAD)"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building Nudge ${VERSION}"
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Build .app
+        run: ./scripts/build_app.sh
+        env:
+          CONFIG: release
+
+      - name: Package .dmg
+        id: dmg
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          OUT="build/Nudge-${VERSION}.dmg"
+          STAGING="$(mktemp -d)/Nudge"
+          mkdir -p "$STAGING"
+          cp -R build/Nudge.app "$STAGING/Nudge.app"
+          ln -s /Applications "$STAGING/Applications"
+          hdiutil create -volname "Nudge" -srcfolder "$STAGING" -ov -format UDZO "$OUT"
+          shasum -a 256 "$OUT" | tee "$OUT.sha256"
+          echo "dmg=$OUT" >> "$GITHUB_OUTPUT"
+          echo "sha=$OUT.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Upload as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nudge-${{ steps.version.outputs.version }}
+          path: |
+            ${{ steps.dmg.outputs.dmg }}
+            ${{ steps.dmg.outputs.sha }}
+
+      - name: Create / update GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Nudge ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            ${{ steps.dmg.outputs.dmg }}
+            ${{ steps.dmg.outputs.sha }}

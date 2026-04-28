@@ -61,6 +61,10 @@ final class AppCoordinator: ObservableObject {
     /// 初回起動時に CLI で確認し、未導入なら設定パネル等から導線を出す。
     @Published var subtaskShortcutInstalled: Bool = false
 
+    /// オンボーディング等から AI 設定シートを開いてほしい時に書き換える。
+    /// MainView が onChange で受け取って showAISettings = true にする。
+    @Published var openAISettingsRequest: UUID = UUID()
+
     var showPopover: (() -> Void)?
 
     private var toastTask: Task<Void, Never>?

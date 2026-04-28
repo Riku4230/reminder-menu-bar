@@ -154,7 +154,31 @@ struct MainView: View {
         return optionsOpen ? base + max(0, optionsPanelHeight) : base
     }
 
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+
     var body: some View {
+        Group {
+            if hasCompletedOnboarding {
+                mainBody
+            } else {
+                OnboardingView()
+                    .environmentObject(store)
+                    .environmentObject(app)
+                    .environmentObject(aiSettings)
+                    .preferredColorScheme(app.appearance.colorScheme)
+                    .onChange(of: app.openAISettingsRequest) { _, _ in
+                        showAISettings = true
+                    }
+                    .sheet(isPresented: $showAISettings) {
+                        AISettingsSheet()
+                            .environmentObject(aiSettings)
+                            .preferredColorScheme(app.appearance.colorScheme)
+                    }
+            }
+        }
+    }
+
+    private var mainBody: some View {
         ZStack(alignment: .bottom) {
             glassBackground
 
