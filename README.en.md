@@ -8,11 +8,11 @@
 
 [🇯🇵 日本語](README.md) · 🇺🇸 English
 
-[![Latest Release](https://img.shields.io/github/v/release/Riku4230/Hutch?style=flat-square&color=4f7bf3)](https://github.com/Riku4230/Hutch/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/Riku4230/Hutch/total?style=flat-square&color=4f7bf3)](https://github.com/Riku4230/Hutch/releases)
+[![Latest Release](https://img.shields.io/github/v/release/Riku4230/Hutch?style=flat-square&color=4f7bf3&label=release)](https://github.com/Riku4230/Hutch/releases/latest)
 [![License](https://img.shields.io/github/license/Riku4230/Hutch?style=flat-square&color=4f7bf3)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-14+-black?style=flat-square&logo=apple)](https://github.com/Riku4230/Hutch/releases/latest)
 [![Swift](https://img.shields.io/badge/Swift-5.9+-orange?style=flat-square&logo=swift)](https://swift.org)
+[![Stars](https://img.shields.io/github/stars/Riku4230/Hutch?style=flat-square&color=4f7bf3)](https://github.com/Riku4230/Hutch/stargazers)
 
 [**Install**](#-install) ·
 [**Features**](#-features) ·
