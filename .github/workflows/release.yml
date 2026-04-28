@@ -89,6 +89,10 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+          # generate_release_notes が自動生成する Changelog の前に共通テンプレ
+          # （install / checksum / security notes）を追記する
+          body_path: .github/release_template.md
+          append_body: true
           files: |
             ${{ steps.dmg.outputs.dmg }}
             ${{ steps.dmg.outputs.sha }}
