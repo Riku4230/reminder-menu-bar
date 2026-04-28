@@ -79,13 +79,6 @@ const Hero = ({ accent, glassStrength }) => {
               GitHubを見る
             </a>
           </div>
-          <div className="hero-meta">
-            <span>macOS 14+</span>
-            <span className="dot">·</span>
-            <span>無料</span>
-            <span className="dot">·</span>
-            <span>Open Source (MIT)</span>
-          </div>
         </div>
 
         <div className="hero-stage">
@@ -192,7 +185,7 @@ const Features = ({ accent }) => (
     <div className="section-head">
       <div className="kicker" style={{ color: accent }}>FEATURES</div>
       <h2>小さく、軽く、<br/>でも、ちゃんと深い。</h2>
-      <p>クイック入力ツールでは終わらない。メニューバーの中だけで、毎日のタスク管理がきちんと完結します。</p>
+      <p>クイック入力ツールでは終わらない。<br />メニューバーの中だけで、毎日のタスク管理がきちんと完結します。</p>
     </div>
     <div className="feature-grid">
       {features.map((f, i) => (
@@ -260,7 +253,7 @@ const AIDemo = ({ accent, glassStrength }) => {
     <section className="section section-ai" ref={ref} data-screen-label="03 AI Demo">
       <div className="section-head">
         <div className="kicker" style={{ color: accent }}>AI INPUT</div>
-        <h2>書いた文章が、そのままタスクになる。</h2>
+        <h2>書いた文章が、<br />そのままタスクになる。</h2>
         <p>日付、時刻、URL、リスト。意味のある情報を自動で抽出してくれます。</p>
       </div>
 
@@ -349,7 +342,7 @@ const SubtaskDemo = ({ accent, glassStrength }) => {
       <div className="section-head">
         <div className="kicker" style={{ color: accent }}>SUBTASKS</div>
         <h2>大きな仕事は、小さく分けて。</h2>
-        <p>親タスクをAIが3〜7個のサブタスクに分解。確認してから、一括で登録できます。</p>
+        <p>親タスクをAIが3〜7個のサブタスクに分解。<br />確認してから、一括で登録できます。</p>
       </div>
 
       <div className="sub-stage">
@@ -397,14 +390,19 @@ const SubtaskDemo = ({ accent, glassStrength }) => {
 
 const SyncSection = ({ accent }) => (
   <section className="section section-sync" data-screen-label="05 Sync">
+    <div className="section-head">
+      <div className="kicker" style={{ color: accent }}>NATIVE INTEGRATION</div>
+      <h2>乗り換え、不要。</h2>
+      <p>
+        Hutch は独自のデータストアを持ちません。<br />
+        EventKit で純正リマインダーを直接読み書きします。<br />
+        だから、いま使っているリスト、iCloud 同期、共有リスト、iPhone 連携が、<br />
+        何もしなくてもそのまま使えます。
+      </p>
+    </div>
+
     <div className="sync-grid">
       <div className="sync-copy">
-        <div className="kicker" style={{ color: accent }}>NATIVE INTEGRATION</div>
-        <h2>乗り換え、不要。</h2>
-        <p>
-          Hutch は独自のデータストアを持ちません。EventKit で純正リマインダーを直接読み書きします。
-          だから、いま使っているリスト、iCloud 同期、共有リスト、iPhone 連携が、何もしなくてもそのまま使えます。
-        </p>
         <ul className="sync-list">
           <li><span className="sync-check" style={{ background: accent }}>✓</span> 既存のリスト構成をそのまま利用</li>
           <li><span className="sync-check" style={{ background: accent }}>✓</span> iCloud で iPhone / iPad と双方向同期</li>
@@ -463,224 +461,6 @@ const SyncSection = ({ accent }) => (
   </section>
 );
 
-// ─── For Whom ───────────────────────────────────────────────────────────────
-
-const personas = [
-  {
-    title: 'リマインダーをよく使う方',
-    body: '既存の Apple リマインダーを使っている方の体験を、何も壊さずに拡張します。',
-    icon: (<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="11" r="5" stroke="currentColor" strokeWidth="1.5"/><path d="M6 26c2-5 6-7 10-7s8 2 10 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
-  },
-  {
-    title: '素早くタスクを書きたい方',
-    body: '思いついたときに、ウインドウを切り替えず、メニューバーから1秒で書ける。',
-    icon: (<svg viewBox="0 0 32 32" fill="none"><path d="M22 5 27 10 12 25l-7 2 2-7L22 5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M19 8l5 5" stroke="currentColor" strokeWidth="1.5"/></svg>),
-  },
-  {
-    title: '作業の流れを止めたくない方',
-    body: 'アプリの切り替えを最小限に。集中が途切れないように設計しています。',
-    icon: (<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11" stroke="currentColor" strokeWidth="1.5"/><path d="M16 9v7l5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
-  },
-  {
-    title: 'iPhone / iPad と連携したい方',
-    body: 'データはすべて iCloud。Apple デバイス間でシームレスに使えます。',
-    icon: (<svg viewBox="0 0 32 32" fill="none"><path d="M12 4 8 8l4 4M20 28l4-4-4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 8h12a4 4 0 0 1 4 4M24 24H12a4 4 0 0 1-4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>),
-  },
-];
-
-const Personas = ({ accent }) => (
-  <section className="section" data-screen-label="06 Personas">
-    <div className="section-head">
-      <div className="kicker" style={{ color: accent }}>WHO IT'S FOR</div>
-      <h2>こんな方におすすめ。</h2>
-    </div>
-    <div className="persona-grid">
-      {personas.map((p, i) => (
-        <div className="persona-card" key={i}>
-          <div className="persona-icon" style={{ color: accent, background: `${accent}14` }}>{p.icon}</div>
-          <h4>{p.title}</h4>
-          <p>{p.body}</p>
-        </div>
-      ))}
-    </div>
-  </section>
-);
-
-// ─── Install ────────────────────────────────────────────────────────────────
-
-const Install = ({ accent }) => {
-  const [copied, setCopied] = useState(false);
-  const cmd = `git clone https://github.com/Riku4230/Hutch.git\ncd Hutch\n./scripts/build_app.sh --install`;
-  const onCopy = () => {
-    navigator.clipboard?.writeText(cmd);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
-  };
-  return (
-    <section className="section section-install" id="install" data-screen-label="07 Install">
-      <div className="section-head">
-        <div className="kicker" style={{ color: accent }}>INSTALL</div>
-        <h2>ソースから、ビルドする。</h2>
-        <p>
-          Hutch は現在、未署名・未公証の OSS 版として配布しています。<br/>
-          最も安全な利用方法は、ソースコードを確認した上で、ローカル環境でビルドすることです。
-        </p>
-      </div>
-
-      <div className="install-card">
-        <div className="install-tabs">
-          <span className="install-tab is-on" style={{ color: accent }}>Recommended</span>
-          <span className="install-tab-sub">3コマンドでインストール</span>
-        </div>
-        <div className="install-code">
-          <pre><code>{cmd}</code></pre>
-          <button className="install-copy" onClick={onCopy} style={{ color: copied ? accent : undefined }}>
-            {copied ? '✓ Copied' : 'Copy'}
-          </button>
-        </div>
-        <div className="install-meta">
-          <span><span className="dot" /> Xcode 15+ が必要です</span>
-          <span><span className="dot" /> Apple Silicon / Intel</span>
-          <span><span className="dot" /> macOS 13 Ventura 以降</span>
-        </div>
-      </div>
-
-      <div className="advanced-card" id="advanced">
-        <div className="advanced-l">
-          <h4>上級者向けダウンロード</h4>
-          <p>
-            利便性のため、GitHub Releases で事前ビルド済みの <code>.dmg</code> を配布しています。<br/>
-            現在のビルドは未署名・未公証のため、初回起動時に macOS Gatekeeper にブロックされる場合があります。
-          </p>
-        </div>
-        <a href="https://github.com/Riku4230/Hutch/releases" target="_blank" rel="noopener" className="advanced-btn">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 11V3m0 8L5 8m3 3 3-3M3 13h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          未署名ビルドをダウンロード
-        </a>
-      </div>
-    </section>
-  );
-};
-
-// ─── Security ───────────────────────────────────────────────────────────────
-
-const Security = ({ accent }) => (
-  <section className="section section-security" data-screen-label="08 Security">
-    <div className="security-grid">
-      <div className="security-copy">
-        <div className="kicker" style={{ color: accent }}>SECURITY & PRIVACY</div>
-        <h2>ローカルファースト、<br/>透明な設計。</h2>
-        <p>Hutch は中継サーバーを持ちません。あなたのデータは、あなたのデバイスとあなたが選んだ AI プロバイダーの間だけを流れます。</p>
-      </div>
-      <div className="security-list">
-        <div className="security-item">
-          <div className="security-icon" style={{ color: accent }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2 4 6v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6l-8-4Z" stroke="currentColor" strokeWidth="1.6"/><circle cx="12" cy="11" r="2" stroke="currentColor" strokeWidth="1.6"/><path d="M12 13v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
-          </div>
-          <div>
-            <h5>API キーは macOS Keychain に保存</h5>
-            <p>OS のセキュア領域に格納。Hutch から外には出ません。</p>
-          </div>
-        </div>
-        <div className="security-item">
-          <div className="security-icon" style={{ color: accent }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.6"/><path d="M3 10h18" stroke="currentColor" strokeWidth="1.6"/><path d="M8 14h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
-          </div>
-          <div>
-            <h5>リマインダーは純正 / iCloud 上に</h5>
-            <p>Hutch のデータベースは存在しません。EventKit 経由で読み書きするだけ。</p>
-          </div>
-        </div>
-        <div className="security-item">
-          <div className="security-icon" style={{ color: accent }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </div>
-          <div>
-            <h5>AI リクエストは直接送信</h5>
-            <p>選択したプロバイダーへ直接通信。Hutch 専用の中継サーバーは使いません。</p>
-          </div>
-        </div>
-        <div className="security-item">
-          <div className="security-icon" style={{ color: accent }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6"/><path d="M12 8v5M12 16v.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
-          </div>
-          <div>
-            <h5>未署名ビルド（現在）</h5>
-            <p>事前ビルドは未署名・未公証です。安全を最優先するならソースからビルドしてください。</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-);
-
-// ─── Why Unsigned ───────────────────────────────────────────────────────────
-
-const WhyUnsigned = ({ accent }) => (
-  <section className="section section-why" data-screen-label="09 Why Unsigned">
-    <div className="why-card">
-      <div className="kicker" style={{ color: accent }}>WHY UNSIGNED?</div>
-      <h2>なぜ、未署名なのか。</h2>
-      <p>
-        Hutch は現在、初期 OSS フェーズのプロジェクトです。
-        署名・公証済みビルドの配布には Apple Developer Program への加入が必要です。
-      </p>
-      <p>
-        現時点では、ソースコードを確認してローカルでビルドする方法を推奨しています。
-        今後、より広く配布する段階で <strong>Developer ID 署名と Apple 公証</strong>に対応する予定です。
-      </p>
-    </div>
-  </section>
-);
-
-// ─── FAQ ────────────────────────────────────────────────────────────────────
-
-const faqs = [
-  {
-    q: '普通にダウンロードして使えますか？',
-    a: 'はい。ただし、現在の事前ビルド済みアプリは未署名・未公証です。そのため、macOS の Gatekeeper 警告が表示される場合があります。安全性を重視する場合は、ソースからビルドしてください。',
-  },
-  {
-    q: 'Apple Developer ID で署名されていますか？',
-    a: 'まだ対応していません。現在の Hutch は、Developer ID 署名・Apple 公証済みビルドを提供していません。将来のリリースで対応予定です。',
-  },
-  {
-    q: 'API キーはどこに保存されますか？',
-    a: 'API キーは macOS Keychain に保存されます。Hutch 専用のサーバーには送信されません。',
-  },
-  {
-    q: 'リマインダーのデータはどこに保存されますか？',
-    a: 'すべて Apple 純正のリマインダー（iCloud）に保存されます。Hutch 独自のデータストアは持ちません。Hutch を削除しても、データは純正側に残ります。',
-  },
-  {
-    q: '料金はかかりますか？',
-    a: 'Hutch 自体は無料・オープンソース（MIT License）です。AI 機能を使う場合は、利用する AI プロバイダーへの API 利用料が別途かかります。',
-  },
-];
-
-const FAQ = ({ accent }) => {
-  const [openIdx, setOpenIdx] = useState(0);
-  return (
-    <section className="section section-faq" data-screen-label="10 FAQ">
-      <div className="section-head">
-        <div className="kicker" style={{ color: accent }}>FAQ</div>
-        <h2>よくある質問</h2>
-      </div>
-      <div className="faq-list">
-        {faqs.map((f, i) => (
-          <div className={`faq-item ${openIdx === i ? 'is-open' : ''}`} key={i} onClick={() => setOpenIdx(openIdx === i ? -1 : i)}>
-            <div className="faq-q">
-              <span>{f.q}</span>
-              <span className="faq-toggle" style={{ color: accent }}>{openIdx === i ? '−' : '+'}</span>
-            </div>
-            {openIdx === i && <div className="faq-a">{f.a}</div>}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-};
-
 // ─── CTA + Footer ───────────────────────────────────────────────────────────
 
 const CTA = ({ accent }) => (
@@ -696,13 +476,6 @@ const CTA = ({ accent }) => (
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.3c-3.7 0-6.7 3-6.7 6.7 0 3 1.9 5.5 4.6 6.4.3.1.5-.1.5-.3v-1.2c-1.9.4-2.3-.9-2.3-.9-.3-.8-.7-1-.7-1-.6-.4 0-.4 0-.4.7 0 1 .7 1 .7.6 1 1.6.7 2 .6 0-.5.2-.7.4-.9-1.5-.2-3.1-.7-3.1-3.3 0-.7.3-1.3.7-1.8-.1-.2-.3-.9.1-1.9 0 0 .6-.2 2 .7.6-.2 1.2-.3 1.8-.3.6 0 1.2.1 1.8.3 1.4-.9 2-.7 2-.7.4 1 .1 1.7.1 1.9.4.5.7 1.1.7 1.8 0 2.6-1.6 3.1-3.1 3.3.2.2.4.6.4 1.2v1.7c0 .2.1.4.5.3 2.7-.9 4.6-3.4 4.6-6.4 0-3.7-3-6.7-6.7-6.7Z"/></svg>
           GitHubでソースを見る
         </a>
-      </div>
-      <div className="cta-meta">
-        <span>macOS 13 Ventura+</span>
-        <span className="cta-dot">·</span>
-        <span>Apple Silicon / Intel</span>
-        <span className="cta-dot">·</span>
-        <span>MIT License</span>
       </div>
     </div>
   </section>

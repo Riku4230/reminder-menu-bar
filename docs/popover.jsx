@@ -26,7 +26,7 @@ const HutchPopover = ({ accent = '#5B7CFA', glassStrength = 0.62, mode = 'list',
   tasks.forEach(t => { (grouped[t.list] = grouped[t.list] || []).push(t); });
 
   return (
-    <div className="hp-wrap" style={{ '--accent': accent, '--accent-soft': accentSoft, '--accent-mid': accentMid, '--glass': glassStrength, transform: `scale(${scale})`, transformOrigin: 'top center' }}>
+    <div className="hp-wrap" role="img" aria-label="Hutch ポップオーバーのプレビュー: メニューバーから開いたリマインダーリスト" style={{ '--accent': accent, '--accent-soft': accentSoft, '--accent-mid': accentMid, '--glass': glassStrength, transform: `scale(${scale})`, transformOrigin: 'top center' }}>
       <div className="hp-shadow" />
       <div className="hp-pop">
         {/* Header */}

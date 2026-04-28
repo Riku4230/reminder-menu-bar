@@ -27,3 +27,4 @@ plans/
 *.sqlite-shm
 *.db
 .wrangler/
+.context/
