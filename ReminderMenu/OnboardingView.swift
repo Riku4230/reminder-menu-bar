@@ -144,23 +144,23 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 14) {
             featureRow(
                 icon: "checklist",
-                title: "リマインダーをメニューバーから",
-                detail: "iCloud 同期される純正リマインダーをそのまま使えます"
+                title: "メニューバーから瞬時に追加",
+                detail: "Dock を離れずタスクを書いて、書き終わったら閉じるだけ"
             )
             featureRow(
                 icon: "sparkles",
-                title: "AI で自然言語追加",
-                detail: "「明日 15 時に病院」と書くだけで日付・メモ・URL を抽出"
+                title: "AI が言葉を理解する",
+                detail: "「明日 15 時に病院」で日付・メモ・URL まで自動抽出"
             )
             featureRow(
                 icon: "list.bullet.indent",
-                title: "サブタスクと進行中ステータス",
-                detail: "純正アプリにはない 3 状態管理と AI 自動分解"
+                title: "進捗が見えるタスク管理",
+                detail: "未着手 / 進行中 / 完了の 3 状態とサブタスク自動分解"
             )
             featureRow(
                 icon: "calendar",
-                title: "カレンダービュー",
-                detail: "リスト色のドットで月単位のリマインダーが見える"
+                title: "カレンダーで月を俯瞰",
+                detail: "リスト色のドットで予定が一目で分かる"
             )
 
             actionPrimary(label: "リマインダーへのアクセスを許可") {
