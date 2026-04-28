@@ -30,7 +30,7 @@ struct OnboardingView: View {
 
         var title: String {
             switch self {
-            case .welcome: return "Nudge へようこそ"
+            case .welcome: return "Hutch へようこそ"
             case .subtaskShortcut: return "サブタスクを使えるようにする"
             case .fullDiskAccess: return "サブタスクを階層表示する"
             case .aiProvider: return "AI モードを使う"
@@ -213,7 +213,7 @@ struct OnboardingView: View {
                     .foregroundStyle(MRTheme.yellow)
                     .padding(.top, 1)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("許可した瞬間に Nudge が再起動します")
+                    Text("許可した瞬間に Hutch が再起動します")
                         .font(.system(size: 11.5, weight: .bold))
                         .foregroundStyle(Color.primaryText)
                     Text("これは macOS の仕様（TCC 権限変更で対象アプリが自動終了）です。再起動後は階層表示が有効になります。")

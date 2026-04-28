@@ -14,7 +14,7 @@ struct OpenAIProvider: AIProvider {
 
     func runJSON(prompt: String, timeoutSeconds: TimeInterval) async throws -> String {
         guard isReady() else {
-            throw AIProviderError.notReady("OpenAI API キーが未設定です。Nudge の設定から登録してください。")
+            throw AIProviderError.notReady("OpenAI API キーが未設定です。Hutch の設定から登録してください。")
         }
 
         // Responses API は input にプロンプトをそのまま渡せる

@@ -544,7 +544,7 @@ struct MainView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("サブタスクの階層表示にはフルディスクアクセスが必要です")
                         .font(.system(size: 11.5, weight: .semibold))
-                    Text("クリックして設定を開く → Nudge を ON にしてアプリを再起動")
+                    Text("クリックして設定を開く → Hutch を ON にしてアプリを再起動")
                         .font(.system(size: 10))
                         .foregroundStyle(Color.secondaryText)
                 }

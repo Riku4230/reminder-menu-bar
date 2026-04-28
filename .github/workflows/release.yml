@@ -40,7 +40,7 @@ jobs:
           SEMVER="${RAW#v}"
           echo "raw=${RAW}" >> "$GITHUB_OUTPUT"
           echo "semver=${SEMVER}" >> "$GITHUB_OUTPUT"
-          echo "Building Nudge ${RAW} (semver=${SEMVER})"
+          echo "Building Hutch ${RAW} (semver=${SEMVER})"
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_15.4.app
@@ -59,12 +59,12 @@ jobs:
         run: |
           set -euo pipefail
           RAW="${{ steps.version.outputs.raw }}"
-          OUT="build/Nudge-${RAW}.dmg"
-          STAGING="$(mktemp -d)/Nudge"
+          OUT="build/Hutch-${RAW}.dmg"
+          STAGING="$(mktemp -d)/Hutch"
           mkdir -p "$STAGING"
-          cp -R build/Nudge.app "$STAGING/Nudge.app"
+          cp -R build/Hutch.app "$STAGING/Hutch.app"
           ln -s /Applications "$STAGING/Applications"
-          hdiutil create -volname "Nudge" -srcfolder "$STAGING" -ov -format UDZO "$OUT"
+          hdiutil create -volname "Hutch" -srcfolder "$STAGING" -ov -format UDZO "$OUT"
           SHA=$(shasum -a 256 "$OUT" | awk '{print $1}')
           echo "$SHA  $(basename "$OUT")" > "$OUT.sha256"
           echo "dmg=$OUT" >> "$GITHUB_OUTPUT"
@@ -76,7 +76,7 @@ jobs:
       - name: Upload as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Nudge-${{ steps.version.outputs.raw }}
+          name: Hutch-${{ steps.version.outputs.raw }}
           path: |
             ${{ steps.dmg.outputs.dmg }}
             ${{ steps.dmg.outputs.sha }}
@@ -85,7 +85,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          name: Nudge ${{ steps.version.outputs.raw }}
+          name: Hutch ${{ steps.version.outputs.raw }}
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -107,17 +107,17 @@ jobs:
           git pull --ff-only origin main
 
           # Cask の version と sha256 を書き換え
-          sed -i '' -E "s/^([[:space:]]*)version \"[^\"]*\"/\1version \"${SEMVER}\"/" Casks/nudge.rb
-          sed -i '' -E "s/^([[:space:]]*)sha256 \"[^\"]*\"/\1sha256 \"${SHA256}\"/" Casks/nudge.rb
+          sed -i '' -E "s/^([[:space:]]*)version \"[^\"]*\"/\1version \"${SEMVER}\"/" Casks/hutch.rb
+          sed -i '' -E "s/^([[:space:]]*)sha256 \"[^\"]*\"/\1sha256 \"${SHA256}\"/" Casks/hutch.rb
 
           # 変更があれば commit + push
-          if git diff --quiet Casks/nudge.rb; then
+          if git diff --quiet Casks/hutch.rb; then
             echo "Cask already up to date"
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Casks/nudge.rb
+          git add Casks/hutch.rb
           git commit -m "Bump cask to v${SEMVER} [skip ci]"
           git push origin main

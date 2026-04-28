@@ -3,9 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG="${CONFIG:-release}"
-# 表示名は Nudge、Swift プロダクト名（バイナリファイル名）は ReminderMenu のまま据え置き
+# 表示名は Hutch、Swift プロダクト名（バイナリファイル名）は ReminderMenu のまま据え置き
 # （Bundle ID と FDA 許可、Shortcuts.app 上のショートカット名互換のため）
-DISPLAY_NAME="Nudge"
+DISPLAY_NAME="Hutch"
 PRODUCT_NAME="ReminderMenu"
 APP_DIR="$ROOT_DIR/build/$DISPLAY_NAME.app"
 
@@ -39,8 +39,9 @@ fi
 
 if [[ "${1:-}" == "--install" ]]; then
   mkdir -p "$HOME/Applications"
-  # 旧名 (ReminderMenu.app) があれば削除して付け替え
+  # 旧名 (ReminderMenu.app, Nudge.app) があれば削除して付け替え
   rm -rf "$HOME/Applications/ReminderMenu.app"
+  rm -rf "$HOME/Applications/Nudge.app"
   rm -rf "$HOME/Applications/$DISPLAY_NAME.app"
   cp -R "$APP_DIR" "$HOME/Applications/$DISPLAY_NAME.app"
   echo "$HOME/Applications/$DISPLAY_NAME.app"

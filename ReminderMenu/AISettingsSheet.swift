@@ -284,7 +284,7 @@ struct AISettingsSheet: View {
     private func providerDescription(_ provider: AIProviderID) -> String {
         switch provider {
         case .claudeCode:
-            return "Claude Code は CLI のサブスク認証 (Max/Team/Enterprise) または ANTHROPIC_API_KEY を再利用します。Nudge 側で API キーは保持しません。"
+            return "Claude Code は CLI のサブスク認証 (Max/Team/Enterprise) または ANTHROPIC_API_KEY を再利用します。Hutch 側で API キーは保持しません。"
         default:
             return "このプロバイダを使うには API キーの保存が必要です。モデルはここで選択でき、保存したキーは Keychain から読み込まれます。"
         }

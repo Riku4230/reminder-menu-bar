@@ -12,7 +12,7 @@ struct GeminiProvider: AIProvider {
 
     func runJSON(prompt: String, timeoutSeconds: TimeInterval) async throws -> String {
         guard isReady() else {
-            throw AIProviderError.notReady("Gemini API キーが未設定です。Nudge の設定から登録してください。")
+            throw AIProviderError.notReady("Gemini API キーが未設定です。Hutch の設定から登録してください。")
         }
         guard var components = URLComponents(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent") else {
             throw AIProviderError.generic("Gemini エンドポイント URL の組み立てに失敗")

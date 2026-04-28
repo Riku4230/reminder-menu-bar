@@ -78,7 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     private func configureStatusItem() {
         guard let button = statusItem.button else { return }
-        let image = NSImage(systemSymbolName: "checklist", accessibilityDescription: "Nudge")
+        let image = NSImage(systemSymbolName: "checklist", accessibilityDescription: "Hutch")
         image?.isTemplate = true
         button.image = image
         button.imagePosition = .imageOnly
