@@ -11,26 +11,14 @@ struct ListManagerSheet: View {
     @State private var deleteConfirm: ReminderCalendar?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("リストを管理")
-                    .font(.system(size: 16, weight: .bold))
-                Spacer()
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Color.secondaryText)
-                        .frame(width: 22, height: 22)
-                        .background(Color.black.opacity(0.05), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .help("閉じる")
-            }
-
+        MRSettingsSurface(
+            title: "リスト管理",
+            subtitle: "リスト名、色、削除をまとめて管理します。",
+            size: .standard,
+            onClose: { dismiss() }
+        ) {
             ScrollView {
-                VStack(spacing: 6) {
+                VStack(spacing: MRTheme.Space.md) {
                     ForEach(store.calendars) { calendar in
                         if editingID == calendar.id {
                             editingRow(for: calendar)
@@ -40,25 +28,24 @@ struct ListManagerSheet: View {
                     }
                 }
             }
-            .frame(maxHeight: 380)
-
-            Divider().opacity(0.4)
-
-            HStack {
+            .scrollIndicators(.hidden)
+        } footer: {
+            HStack(spacing: MRTheme.Space.md) {
+                Text("\(store.calendars.count) 件のリスト")
+                    .font(.system(size: MRTheme.FontSize.footnote, weight: .semibold))
+                    .foregroundStyle(Color.secondaryText)
                 Spacer()
-                Button("完了") { dismiss() }
-                    .buttonStyle(.borderedProminent)
-                    .tint(MRTheme.accent)
+                Button("閉じる") { dismiss() }
+                    .buttonStyle(.mr(.primary, size: .sm))
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(18)
-        .alert(item: $deleteConfirm) { cal in
+        .alert(item: $deleteConfirm) { calendar in
             Alert(
-                title: Text("「\(cal.title)」を削除"),
+                title: Text("「\(calendar.title)」を削除"),
                 message: Text("このリスト内のすべてのリマインダーも削除されます。"),
                 primaryButton: .destructive(Text("削除")) {
-                    delete(cal)
+                    delete(calendar)
                 },
                 secondaryButton: .cancel(Text("キャンセル"))
             )
@@ -66,110 +53,96 @@ struct ListManagerSheet: View {
     }
 
     private func row(for calendar: ReminderCalendar) -> some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(calendar.color)
-                .frame(width: 12, height: 12)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(calendar.title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.primaryText)
-                Text("\(calendar.count) 件 · \(calendar.sourceTitle)")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.secondaryText)
-            }
-            Spacer()
-            Button {
-                draftName = calendar.title
-                draftColor = matchingColor(for: calendar.color)
-                editingID = calendar.id
-            } label: {
-                Image(systemName: "pencil")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.secondaryText)
-                    .frame(width: 26, height: 24)
-                    .background(Color.black.opacity(0.04), in: Capsule())
-                    .overlay(Capsule().stroke(Color.black.opacity(0.08), lineWidth: 0.5))
-            }
-            .buttonStyle(.plain)
-            .help("編集")
+        MRCard(padding: MRTheme.Space.lg) {
+            HStack(spacing: MRTheme.Space.lg) {
+                Circle()
+                    .fill(calendar.color)
+                    .frame(width: 12, height: 12)
 
-            Button(role: .destructive) {
-                deleteConfirm = calendar
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(MRTheme.red)
-                    .frame(width: 26, height: 24)
-                    .background(Color.black.opacity(0.04), in: Capsule())
-                    .overlay(Capsule().stroke(Color.black.opacity(0.08), lineWidth: 0.5))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(calendar.title)
+                        .font(.system(size: MRTheme.FontSize.label, weight: .semibold))
+                        .foregroundStyle(Color.primaryText)
+                        .lineLimit(1)
+                    Text("\(calendar.count) 件 · \(calendar.sourceTitle)")
+                        .font(.system(size: MRTheme.FontSize.footnote))
+                        .foregroundStyle(Color.secondaryText)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Button {
+                    draftName = calendar.title
+                    draftColor = matchingColor(for: calendar.color)
+                    editingID = calendar.id
+                } label: {
+                    Image(systemName: "pencil")
+                }
+                .buttonStyle(.mrIcon(dimension: 28))
+                .help("編集")
+
+                Button(role: .destructive) {
+                    deleteConfirm = calendar
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.mrIcon(tint: MRTheme.red, dimension: 28))
+                .help("削除")
             }
-            .buttonStyle(.plain)
-            .help("削除")
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.black.opacity(0.06), lineWidth: 0.5)
-        )
     }
 
     private func editingRow(for calendar: ReminderCalendar) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(draftColor)
-                    .frame(width: 14, height: 14)
-                TextField("リスト名", text: $draftName)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13, weight: .medium))
-                    .onSubmit { save(calendar) }
-            }
+        MRCard(selected: true, padding: MRTheme.Space.lg) {
+            VStack(alignment: .leading, spacing: MRTheme.Space.lg) {
+                HStack(spacing: MRTheme.Space.md) {
+                    Circle()
+                        .fill(draftColor)
+                        .frame(width: 14, height: 14)
 
-            HStack(spacing: 8) {
-                ForEach(Array(MRTheme.listColors.enumerated()), id: \.offset) { _, color in
-                    Button {
-                        draftColor = color
-                    } label: {
-                        Circle()
-                            .fill(color)
-                            .frame(width: 22, height: 22)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.primary.opacity(sameColor(color, draftColor) ? 0.7 : 0), lineWidth: 2)
-                            )
+                    MRStyledTextField {
+                        TextField("リスト名", text: $draftName)
+                            .onSubmit { save(calendar) }
                     }
-                    .buttonStyle(.plain)
                 }
-            }
 
-            HStack(spacing: 6) {
-                Spacer()
-                Button("キャンセル") {
-                    editingID = nil
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.secondaryText)
-                .font(.system(size: 12))
+                HStack(spacing: MRTheme.Space.sm) {
+                    ForEach(Array(MRTheme.listColors.enumerated()), id: \.offset) { _, color in
+                        Button {
+                            draftColor = color
+                        } label: {
+                            Circle()
+                                .fill(color)
+                                .frame(width: 24, height: 24)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.primary.opacity(sameColor(color, draftColor) ? 0.7 : 0), lineWidth: 2)
+                                )
+                                .overlay(
+                                    Circle()
+                                        .stroke(MRTheme.Border.line, lineWidth: 0.5)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
 
-                Button("保存") {
-                    save(calendar)
+                    Spacer()
+
+                    Button("キャンセル") {
+                        editingID = nil
+                    }
+                    .buttonStyle(.mr(.secondary, size: .sm))
+
+                    Button("保存") {
+                        save(calendar)
+                    }
+                    .buttonStyle(.mr(.primary, size: .sm))
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(draftName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(MRTheme.accent)
-                .controlSize(.small)
-                .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(MRTheme.accent.opacity(0.4), lineWidth: 1)
-        )
     }
 
     private func save(_ calendar: ReminderCalendar) {
@@ -204,4 +177,3 @@ struct ListManagerSheet: View {
         return aNS == bNS
     }
 }
-

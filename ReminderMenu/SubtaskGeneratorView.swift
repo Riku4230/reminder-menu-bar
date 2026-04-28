@@ -100,9 +100,7 @@ struct SubtaskGeneratorView: View {
                 Button("もう一度試す") {
                     Task { await generate() }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(MRTheme.accent)
-                .controlSize(.small)
+                .buttonStyle(.mr(.primary, size: .sm))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -222,9 +220,7 @@ struct SubtaskGeneratorView: View {
                         .font(.system(size: 12, weight: .bold))
                 }
             }
-            .buttonStyle(.borderedProminent)
-            .tint(MRTheme.accent)
-            .controlSize(.small)
+            .buttonStyle(.mr(.primary, size: .sm))
             .keyboardShortcut(.defaultAction)
             .disabled(isLoading || isCommitting || validCount == 0)
         }

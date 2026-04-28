@@ -128,6 +128,42 @@ struct MRCloseButton: View {
     }
 }
 
+// MARK: - Modern switch
+
+struct MRModernSwitch: View {
+    @Binding var isOn: Bool
+    var compact: Bool = true
+
+    private var width: CGFloat { compact ? 34 : 40 }
+    private var height: CGFloat { compact ? 20 : 24 }
+    private var knobSize: CGFloat { compact ? 16 : 20 }
+
+    var body: some View {
+        Button {
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.82)) {
+                isOn.toggle()
+            }
+        } label: {
+            RoundedRectangle(cornerRadius: height / 2, style: .continuous)
+                .fill(isOn ? MRTheme.accent : Color.black.opacity(0.12))
+                .frame(width: width, height: height)
+                .overlay(
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: knobSize, height: knobSize)
+                        .shadow(color: Color.black.opacity(0.16), radius: 2, y: 1)
+                        .offset(x: isOn ? (width - height) / 2 : -(width - height) / 2)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: height / 2, style: .continuous)
+                        .stroke(isOn ? MRTheme.accent.opacity(0.35) : MRTheme.Border.line, lineWidth: 0.5)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isOn ? "オン" : "オフ")
+    }
+}
+
 // MARK: - Pill / Badge
 
 struct MRPill: View {
@@ -205,7 +241,7 @@ struct MRSectionHeader: View {
     }
 }
 
-// MARK: - Toggle (mod styled, wraps system Toggle)
+// MARK: - Toggle row
 
 struct MRToggle: View {
     let title: String
@@ -224,10 +260,7 @@ struct MRToggle: View {
                 }
             }
             Spacer()
-            Toggle("", isOn: $isOn)
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .tint(MRTheme.accent)
+            MRModernSwitch(isOn: $isOn)
         }
     }
 }
@@ -252,5 +285,138 @@ struct MRStyledTextField<Field: View>: View {
                 RoundedRectangle(cornerRadius: MRTheme.Radius.md, style: .continuous)
                     .stroke(MRTheme.Border.line, lineWidth: 0.5)
             )
+    }
+}
+
+// MARK: - Settings surface
+
+enum MRSettingsSize {
+    case dialog
+    case standard
+    case preferences
+
+    var width: CGFloat {
+        switch self {
+        case .dialog: return 340
+        case .standard: return 380
+        case .preferences: return 480
+        }
+    }
+
+    var height: CGFloat {
+        switch self {
+        case .dialog: return 360
+        case .standard: return 500
+        case .preferences: return 580
+        }
+    }
+}
+
+struct MRSettingsSurface<Content: View, Footer: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    var size: MRSettingsSize = .standard
+    var onClose: () -> Void
+    @ViewBuilder var content: () -> Content
+    @ViewBuilder var footer: () -> Footer
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: MRTheme.Space.xl) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: MRTheme.FontSize.heading, weight: .bold))
+                        .foregroundStyle(Color.primaryText)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.system(size: MRTheme.FontSize.footnote))
+                            .foregroundStyle(Color.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer()
+                MRCloseButton(action: onClose)
+            }
+            .padding(.horizontal, MRTheme.Space.xxl)
+            .padding(.top, MRTheme.Space.xxl)
+            .padding(.bottom, MRTheme.Space.lg)
+
+            Rectangle()
+                .fill(MRTheme.Border.hairline)
+                .frame(height: 0.5)
+
+            content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(MRTheme.Space.xxl)
+
+            Rectangle()
+                .fill(MRTheme.Border.hairline)
+                .frame(height: 0.5)
+
+            footer()
+                .padding(.horizontal, MRTheme.Space.xxl)
+                .padding(.vertical, MRTheme.Space.lg)
+        }
+        .frame(width: size.width, height: size.height)
+        .background(MRSettingsBackground())
+    }
+}
+
+private struct MRSettingsBackground: View {
+    var body: some View {
+        ZStack {
+            VisualEffectView(material: .popover)
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.96),
+                    Color(red: 0.97, green: 0.99, blue: 1.0).opacity(0.92)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+}
+
+struct MRInfoBanner: View {
+    var systemImage: String
+    var text: String
+    var tint: Color = MRTheme.accent
+
+    var body: some View {
+        HStack(alignment: .top, spacing: MRTheme.Space.sm) {
+            Image(systemName: systemImage)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 16, height: 16)
+            Text(text)
+                .font(.system(size: MRTheme.FontSize.footnote))
+                .foregroundStyle(Color.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, MRTheme.Space.lg)
+        .padding(.vertical, MRTheme.Space.md)
+        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: MRTheme.Radius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: MRTheme.Radius.md, style: .continuous)
+                .stroke(tint.opacity(0.18), lineWidth: 0.5)
+        )
+    }
+}
+
+struct MRFieldRow<Content: View>: View {
+    let label: String
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        HStack(alignment: .center, spacing: MRTheme.Space.lg) {
+            Text(label)
+                .font(.system(size: MRTheme.FontSize.footnote, weight: .semibold))
+                .foregroundStyle(Color.secondaryText)
+                .frame(width: 82, alignment: .leading)
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
