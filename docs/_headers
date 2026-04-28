@@ -4,6 +4,7 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: interest-cohort=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'
 
 /llms.txt
   Content-Type: text/plain; charset=utf-8
@@ -23,8 +24,13 @@
   Content-Type: application/xml; charset=utf-8
   Cache-Control: public, max-age=3600
 
+# CSS / JSX use ?v=N query strings, so cache for 1 hour to allow updates
 /*.css
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=3600, must-revalidate
 
+/*.jsx
+  Cache-Control: public, max-age=3600, must-revalidate
+
+# Images can be longer-lived but still revalidate
 /*.png
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=86400, must-revalidate

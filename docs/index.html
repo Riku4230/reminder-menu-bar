@@ -77,72 +77,6 @@
 }
 </script>
 
-<!-- Structured Data: FAQPage -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "Hutch とは何ですか？",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Hutch は macOS のメニューバーに常駐する、AI 搭載のリマインダーアプリです。Apple 純正リマインダー (EventKit) と直接同期し、自然言語入力やサブタスク自動分解などの機能を提供します。オープンソース・無料で配布されています。"
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "データはどこに保存されますか？",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "リマインダーのデータは Apple Reminders と iCloud にそのまま保存されます。Hutch を削除してもデータは残り、iPhone / iPad / 他の Mac から純正アプリで引き続き使えます。"
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "AI 機能を使うのに API キーは必要ですか？",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Claude Code CLI を使う場合は API キーは不要です。Anthropic / OpenAI / Google Gemini の API を直接使う場合のみ、各社の API キーが必要です。API キーは macOS の Keychain に暗号化保存され、平文ファイルやサーバーには出ません。"
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "インストールはどうやりますか？",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "推奨はソースからのビルドです。git clone https://github.com/Riku4230/Hutch.git で取得し、./scripts/build_app.sh --install を実行します。Homebrew Cask と GitHub Releases の .dmg も提供していますが、現在は未署名のため上級者向けです。"
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "署名されていますか？Gatekeeper の警告は出ますか？",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "現在は Apple Developer ID による署名・公証を行っていません。事前ビルド済みアプリを開く際は macOS Gatekeeper の警告が表示されます。最も安全な利用方法はソースからのローカルビルドです。"
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "対応している macOS のバージョンは？",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "macOS 14 (Sonoma) 以降に対応しています。Apple Silicon / Intel 両方で動作します。"
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "ライセンスは何ですか？",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "MIT License です。自由に fork / 改変できます。"
-      }
-    }
-  ]
-}
-</script>
-
 <!-- Structured Data: Person (publisher) -->
 <script type="application/ld+json">
 {
@@ -154,10 +88,10 @@
 }
 </script>
 
-<link rel="stylesheet" href="popover.css?v=5" />
-<link rel="stylesheet" href="main.css?v=5" />
-<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="popover.css?v=6" />
+<link rel="stylesheet" href="main.css?v=6" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 </head>
 <body>
