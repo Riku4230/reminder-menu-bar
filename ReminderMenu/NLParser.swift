@@ -6,51 +6,82 @@ enum NLParser {
         var memo: String?
     }
 
-    /// 親タスクからサブタスク候補（title + memo）を生成する。Claude CLI が無い／失敗時は空配列。
-    static func generateSubtasks(parentTitle: String, parentMemo: String?) async -> [SubtaskCandidate] {
+    /// 親タスクからサブタスク候補（title + memo）を生成。AI が失敗したら空配列。
+    static func generateSubtasks(
+        parentTitle: String,
+        parentMemo: String?,
+        using provider: AIProvider
+    ) async -> [SubtaskCandidate] {
         let title = parentTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return [] }
         let memo = parentMemo?.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        let result = await Task.detached(priority: .userInitiated) {
-            try? runClaudeSubtaskGenerator(parentTitle: title, parentMemo: memo)
-        }.value
-        return result ?? []
-    }
-
-    private static func runClaudeSubtaskGenerator(parentTitle: String, parentMemo: String?) throws -> [SubtaskCandidate] {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["claude", "-p", subtaskPrompt(parentTitle: parentTitle, parentMemo: parentMemo)]
-
-        let output = Pipe()
-        let error = Pipe()
-        process.standardOutput = output
-        process.standardError = error
-
-        try process.run()
-        let finished = wait(process: process, timeout: 15)
-        if !finished {
-            process.terminate()
+        let prompt = subtaskPrompt(parentTitle: title, parentMemo: memo)
+        do {
+            let raw = try await provider.runJSON(prompt: prompt, timeoutSeconds: 20)
+            let jsonText = extractJSON(from: raw)
+            guard let data = jsonText.data(using: .utf8) else { return [] }
+            let decoded = try JSONDecoder().decode(SubtaskResponse.self, from: data)
+            return decoded.subtasks.compactMap { item in
+                let t = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !t.isEmpty else { return nil }
+                let m = item.memo?.trimmingCharacters(in: .whitespacesAndNewlines)
+                return SubtaskCandidate(
+                    title: t,
+                    memo: (m?.isEmpty ?? true) ? nil : m
+                )
+            }
+        } catch {
             return []
         }
-
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        guard let text = String(data: data, encoding: .utf8), !text.isEmpty else { return [] }
-        let jsonText = extractJSON(from: text)
-        guard let jsonData = jsonText.data(using: .utf8) else { return [] }
-
-        let response = try JSONDecoder().decode(SubtaskResponse.self, from: jsonData)
-        return response.subtasks.compactMap { item -> SubtaskCandidate? in
-            let title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !title.isEmpty else { return nil }
-            let memo = item.memo?.trimmingCharacters(in: .whitespacesAndNewlines)
-            return SubtaskCandidate(
-                title: title,
-                memo: (memo?.isEmpty ?? true) ? nil : memo
-            )
-        }
     }
+
+    /// 自然言語をリマインダーに変換。AI が失敗したらローカル日本語パーサーへフォールバック。
+    static func parse(
+        _ input: String,
+        availableLists: [ReminderCalendar],
+        using provider: AIProvider
+    ) async -> [ReminderDraft] {
+        let cleanInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanInput.isEmpty else { return [] }
+
+        if provider.isReady() {
+            do {
+                let raw = try await provider.runJSON(
+                    prompt: parsePrompt(input: cleanInput, availableLists: availableLists),
+                    timeoutSeconds: 18
+                )
+                let jsonText = extractJSON(from: raw)
+                if let data = jsonText.data(using: .utf8) {
+                    let decoder = JSONDecoder()
+                    decoder.dateDecodingStrategy = .iso8601
+                    if let response = try? decoder.decode(ParseResponse.self, from: data),
+                       !response.tasks.isEmpty {
+                        return response.tasks.compactMap { task in
+                            let title = task.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !title.isEmpty else { return nil }
+                            let memo = task.memo?.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let urlString = task.url?.trimmingCharacters(in: .whitespacesAndNewlines)
+                            return ReminderDraft(
+                                title: title,
+                                dueDate: task.dueDate,
+                                includesTime: task.includesTime,
+                                priority: task.priority,
+                                listName: task.list,
+                                memo: (memo?.isEmpty ?? true) ? nil : memo,
+                                url: (urlString?.isEmpty ?? true) ? nil : URL(string: urlString!)
+                            )
+                        }
+                    }
+                }
+            } catch {
+                // フォールバックへ落ちる
+            }
+        }
+        return LocalParser(input: cleanInput, availableLists: availableLists).parse()
+    }
+
+    // MARK: - Prompts
 
     private static func subtaskPrompt(parentTitle: String, parentMemo: String?) -> String {
         let memoBlock = (parentMemo?.isEmpty ?? true) ? "" : "\nParent memo:\n\(parentMemo!)\n"
@@ -71,71 +102,7 @@ enum NLParser {
         """
     }
 
-    static func parse(_ input: String, availableLists: [ReminderCalendar]) async -> [ReminderDraft] {
-        let cleanInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanInput.isEmpty else { return [] }
-
-        let drafts = await Task.detached(priority: .userInitiated) {
-            try? runClaudeParser(input: cleanInput, availableLists: availableLists)
-        }.value
-
-        if let drafts, !drafts.isEmpty {
-            return drafts
-        }
-
-        return LocalParser(input: cleanInput, availableLists: availableLists).parse()
-    }
-
-    private static func runClaudeParser(input: String, availableLists: [ReminderCalendar]) throws -> [ReminderDraft] {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["claude", "-p", prompt(input: input, availableLists: availableLists)]
-
-        let output = Pipe()
-        let error = Pipe()
-        process.standardOutput = output
-        process.standardError = error
-
-        try process.run()
-        let finished = wait(process: process, timeout: 12)
-        if !finished {
-            process.terminate()
-            return []
-        }
-
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        guard let text = String(data: data, encoding: .utf8), !text.isEmpty else { return [] }
-        let jsonText = extractJSON(from: text)
-        guard let jsonData = jsonText.data(using: .utf8) else { return [] }
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let response = try decoder.decode(ClaudeParseResponse.self, from: jsonData)
-        return response.tasks.compactMap { task in
-            let title = task.title.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !title.isEmpty else { return nil }
-            let memo = task.memo?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let urlString = task.url?.trimmingCharacters(in: .whitespacesAndNewlines)
-            return ReminderDraft(
-                title: title,
-                dueDate: task.dueDate,
-                includesTime: task.includesTime,
-                priority: task.priority,
-                listName: task.list,
-                memo: (memo?.isEmpty ?? true) ? nil : memo,
-                url: (urlString?.isEmpty ?? true) ? nil : URL(string: urlString!)
-            )
-        }
-    }
-
-    private static func wait(process: Process, timeout: TimeInterval) -> Bool {
-        let group = DispatchGroup()
-        group.enter()
-        process.terminationHandler = { _ in group.leave() }
-        return group.wait(timeout: .now() + timeout) == .success
-    }
-
-    private static func prompt(input: String, availableLists: [ReminderCalendar]) -> String {
+    private static func parsePrompt(input: String, availableLists: [ReminderCalendar]) -> String {
         let now = ISO8601DateFormatter().string(from: Date())
         let lists = availableLists.map(\.title).joined(separator: ", ")
         return """
@@ -147,7 +114,7 @@ enum NLParser {
         Priority must be 0 for none, 9 for low, 5 for medium, 1 for high.
 
         Extract these optional fields when the user provides them:
-        - "memo": any descriptive notes, context, sub-points, or details. Strip out the time/date/priority/list bits already covered by other fields. If nothing meaningful remains besides the title, omit memo (set to null or skip).
+        - "memo": any descriptive notes, context, sub-points, or details. Strip out the time/date/priority/list bits already covered by other fields. If nothing meaningful remains besides the title, omit memo.
         - "url": if the user pastes or mentions a URL (http/https), set it here. Otherwise omit.
 
         Do NOT invent tags or hashtags. Do not return a "tags" field.
@@ -159,17 +126,12 @@ enum NLParser {
         \(input)
         """
     }
-
-    private static func extractJSON(from text: String) -> String {
-        if let start = text.firstIndex(of: "{"), let end = text.lastIndex(of: "}") {
-            return String(text[start...end])
-        }
-        return text
-    }
 }
 
-private struct ClaudeParseResponse: Codable {
-    var tasks: [ClaudeTask]
+// MARK: - Decoders
+
+private struct ParseResponse: Codable {
+    var tasks: [ParsedTask]
 }
 
 private struct SubtaskResponse: Codable {
@@ -181,7 +143,7 @@ private struct SubtaskItem: Codable {
     var memo: String?
 }
 
-private struct ClaudeTask: Codable {
+private struct ParsedTask: Codable {
     var title: String
     var dueDate: Date?
     var includesTime: Bool
@@ -190,6 +152,8 @@ private struct ClaudeTask: Codable {
     var memo: String?
     var url: String?
 }
+
+// MARK: - Local fallback parser (unchanged from previous implementation)
 
 private struct LocalParser {
     let input: String
@@ -221,7 +185,6 @@ private struct LocalParser {
         }
     }
 
-    /// テキストから URL を 1 つ抽出して取り除く。NSDataDetector で http/https を検出。
     private func extractURL(from text: inout String) -> URL? {
         guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
             return nil
@@ -273,7 +236,6 @@ private struct LocalParser {
     private func splitSegments(_ text: String) -> [String] {
         let normalized = text
             .replacingOccurrences(of: "、", with: "と")
-            .replacingOccurrences(of: "，", with: "と")
             .replacingOccurrences(of: ",", with: "と")
 
         let parts = normalized.components(separatedBy: "と")

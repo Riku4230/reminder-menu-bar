@@ -5,6 +5,7 @@ import SwiftUI
 /// 起動時に自動で Claude を呼び、結果はユーザーが確定するまで EventKit には書き込まれない。
 struct SubtaskGeneratorView: View {
     @EnvironmentObject private var store: ReminderStore
+    @EnvironmentObject private var aiSettings: AISettings
 
     let parent: EKReminder
     let onClose: () -> Void
@@ -241,7 +242,11 @@ struct SubtaskGeneratorView: View {
         isLoading = true
         errorMessage = nil
         let memo = store.memo(for: parent)
-        let result = await NLParser.generateSubtasks(parentTitle: parent.title, parentMemo: memo.isEmpty ? nil : memo)
+        let result = await NLParser.generateSubtasks(
+            parentTitle: parent.title,
+            parentMemo: memo.isEmpty ? nil : memo,
+            using: aiSettings.currentProvider()
+        )
         if result.isEmpty {
             isLoading = false
             errorMessage = "AI からの応答が空でした。Claude Code がインストールされているか確認してください。"

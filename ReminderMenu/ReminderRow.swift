@@ -3,9 +3,13 @@ import SwiftUI
 
 struct ReminderRow: View {
     @EnvironmentObject private var store: ReminderStore
+    @EnvironmentObject private var aiSettings: AISettings
 
     let reminder: EKReminder
     var indentLevel: Int = 0
+    /// `indentLevel == 0` で出ているが本来は誰かの子タスクのとき true。
+    /// 親が同じグループに居なくてフラットに描画されるケースを区別するために使う。
+    var isOrphanedChild: Bool = false
 
     @State private var isExpanded = false
     @State private var isEditingTitle = false
@@ -124,6 +128,7 @@ struct ReminderRow: View {
             || store.priorityLabel(for: reminder) != nil
             || !store.displayTags(for: reminder).isEmpty
             || progressState == .inProgress
+            || store.parent(of: reminder) != nil
     }
 
     // MARK: - Checkbox (3 states: 未着手 / 進行中 / 完了)
@@ -135,20 +140,17 @@ struct ReminderRow: View {
             ZStack {
                 let calColor = store.color(for: reminder.calendar)
                 Circle()
-                    .stroke(calColor, lineWidth: 1.6)
+                    .stroke(calColor.opacity(progressState == .inProgress ? 0.25 : 1.0), lineWidth: 1.6)
                     .frame(width: 18, height: 18)
 
                 switch progressState {
                 case .notStarted:
                     EmptyView()
                 case .inProgress:
-                    // 左半分塗りで「進行中」を表現
-                    Circle()
-                        .trim(from: 0.5, to: 1.0)
-                        .fill(calColor)
+                    // 進行中: 短い弧が外周を回るスピナー風表現
+                    SpinnerArc(color: calColor)
                         .frame(width: 18, height: 18)
-                        .rotationEffect(.degrees(180))
-                        .transition(.scale.combined(with: .opacity))
+                        .transition(.opacity)
                 case .completed:
                     Circle()
                         .fill(calColor)
@@ -240,14 +242,22 @@ struct ReminderRow: View {
                 }
             }
         } else {
-            Text(reminder.title)
-                .font(.system(size: 13.5, weight: .medium))
-                .foregroundStyle(displayedAsCompleted ? Color.secondaryText : Color.primaryText)
-                .lineLimit(2)
-                .strikethrough(displayedAsCompleted, color: .secondaryText)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture { beginTitleEdit() }
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                if isOrphanedChild {
+                    Image(systemName: "arrow.turn.down.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(MRTheme.accent.opacity(0.7))
+                        .help("これはサブタスクです（親は別グループにあります）")
+                }
+                Text(reminder.title)
+                    .font(.system(size: 13.5, weight: .medium))
+                    .foregroundStyle(displayedAsCompleted ? Color.secondaryText : Color.primaryText)
+                    .lineLimit(2)
+                    .strikethrough(displayedAsCompleted, color: .secondaryText)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture { beginTitleEdit() }
         }
     }
 
@@ -256,7 +266,14 @@ struct ReminderRow: View {
     private var metaRow: some View {
         HStack(spacing: 8) {
             if progressState == .inProgress {
-                MetaItem(systemName: "circle.lefthalf.filled", text: "進行中", color: MRTheme.accent)
+                MetaItem(systemName: "circle.inset.filled", text: "進行中", color: MRTheme.accent)
+            }
+            if let parent = store.parent(of: reminder) {
+                MetaItem(
+                    systemName: "arrow.turn.left.up",
+                    text: parent.title,
+                    color: .secondaryText
+                )
             }
             if let dueLabel = store.dueLabel(for: reminder) {
                 let isToday = dueLabel.hasPrefix("今日") && !reminder.isCompleted
@@ -300,12 +317,68 @@ struct ReminderRow: View {
             tagField
             urlField
             actionRow
+            parentLinkRow
+            subtasksList
             if indentLevel == 0 {
                 subtaskSection
             }
         }
         .padding(.top, 4)
         .padding(.leading, 29)
+    }
+
+    /// 子タスク表示時に親タスクへのリンク行を出す。
+    @ViewBuilder
+    private var parentLinkRow: some View {
+        if let parent = store.parent(of: reminder) {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.turn.left.up")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(MRTheme.accent)
+                Text("親:")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.secondaryText)
+                Text(parent.title)
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(Color.primaryText)
+                    .strikethrough(parent.isCompleted, color: .secondaryText)
+                Spacer()
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    /// 親タスク展開時にサブタスク一覧を出す。
+    @ViewBuilder
+    private var subtasksList: some View {
+        let subs = store.subtasks(of: reminder)
+        if !subs.isEmpty {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Image(systemName: "list.bullet.indent")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Color.secondaryText)
+                    Text("サブタスク \(subs.count) 件")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(Color.secondaryText)
+                        .tracking(0.3)
+                }
+                ForEach(subs, id: \.calendarItemIdentifier) { sub in
+                    HStack(spacing: 6) {
+                        Image(systemName: sub.isCompleted ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 10))
+                            .foregroundStyle(sub.isCompleted ? MRTheme.accent : Color.secondaryText)
+                        Text(sub.title)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(sub.isCompleted ? Color.secondaryText : Color.primaryText)
+                            .strikethrough(sub.isCompleted, color: .secondaryText)
+                            .lineLimit(1)
+                        Spacer()
+                    }
+                }
+            }
+            .padding(.top, 2)
+        }
     }
 
     @ViewBuilder
@@ -321,7 +394,15 @@ struct ReminderRow: View {
                     .foregroundStyle(Color.primaryText)
                     .focused($subtaskFocused)
                     .disabled(subtaskInFlight)
-                    .onSubmit { commitNewSubtask() }
+                    .onKeyPress(.return) {
+                        // IME 変換中の Enter は確定として通す
+                        if let editor = NSApp.keyWindow?.firstResponder as? NSTextView,
+                           editor.hasMarkedText() {
+                            return .ignored
+                        }
+                        commitNewSubtask()
+                        return .handled
+                    }
                     .onExitCommand { cancelSubtaskAdd() }
                 if subtaskInFlight {
                     ProgressView()
@@ -370,6 +451,7 @@ struct ReminderRow: View {
                         showSubtaskGenerator = false
                     }
                     .environmentObject(store)
+                    .environmentObject(aiSettings)
                 }
             }
         }
@@ -703,6 +785,29 @@ struct ReminderRow: View {
 }
 
 // MARK: - Inline meta item (no chip background)
+
+// MARK: - In-progress spinner arc
+
+/// 「進行中」を表すマーク。状態変化 / 再描画時に **1 周だけ** 回って止まる。
+/// 静止後は外周上部に弧が固定され、それ自体が「進行中」のサインとして残る。
+/// 常時回転だとリスト内で複数同時に動いて視覚ノイズになるため、フィードバック的な短アニメに留める。
+private struct SpinnerArc: View {
+    let color: Color
+    @State private var angle: Double = 0
+
+    var body: some View {
+        Circle()
+            .trim(from: 0, to: 0.22)
+            .stroke(color, style: StrokeStyle(lineWidth: 2.0, lineCap: .round))
+            .rotationEffect(.degrees(angle))
+            .onAppear {
+                // 一度だけ一周してそのまま静止（easeOut でラスト緩やかに減速）
+                withAnimation(.easeOut(duration: 1.4)) {
+                    angle = 360
+                }
+            }
+    }
+}
 
 private struct MetaItem: View {
     var systemName: String
