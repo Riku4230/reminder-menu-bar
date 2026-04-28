@@ -70,7 +70,10 @@ h2 {
   font-size: 17px;
   color: var(--ink-2);
   text-wrap: pretty;
-  max-width: 560px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  line-break: strict;
+  max-width: 640px;
   margin: 0 auto;
 }
 
@@ -159,6 +162,9 @@ h2 {
   line-height: 1.65;
   margin-bottom: 36px;
   text-wrap: pretty;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  line-break: strict;
   max-width: 480px;
 }
 

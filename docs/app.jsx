@@ -185,7 +185,7 @@ const Features = ({ accent }) => (
     <div className="section-head">
       <div className="kicker" style={{ color: accent }}>FEATURES</div>
       <h2>小さく、軽く、<br/>でも、ちゃんと深い。</h2>
-      <p>クイック入力ツールでは終わらない。メニューバーの中だけで、毎日のタスク管理がきちんと完結します。</p>
+      <p>クイック入力ツールでは終わらない。<br />メニューバーの中だけで、毎日のタスク管理がきちんと完結します。</p>
     </div>
     <div className="feature-grid">
       {features.map((f, i) => (
@@ -342,7 +342,7 @@ const SubtaskDemo = ({ accent, glassStrength }) => {
       <div className="section-head">
         <div className="kicker" style={{ color: accent }}>SUBTASKS</div>
         <h2>大きな仕事は、小さく分けて。</h2>
-        <p>親タスクをAIが3〜7個のサブタスクに分解。確認してから、一括で登録できます。</p>
+        <p>親タスクをAIが3〜7個のサブタスクに分解。<br />確認してから、一括で登録できます。</p>
       </div>
 
       <div className="sub-stage">
@@ -394,8 +394,10 @@ const SyncSection = ({ accent }) => (
       <div className="kicker" style={{ color: accent }}>NATIVE INTEGRATION</div>
       <h2>乗り換え、不要。</h2>
       <p>
-        Hutch は独自のデータストアを持ちません。EventKit で純正リマインダーを直接読み書きします。
-        だから、いま使っているリスト、iCloud 同期、共有リスト、iPhone 連携が、何もしなくてもそのまま使えます。
+        Hutch は独自のデータストアを持ちません。<br />
+        EventKit で純正リマインダーを直接読み書きします。<br />
+        だから、いま使っているリスト、iCloud 同期、共有リスト、iPhone 連携が、<br />
+        何もしなくてもそのまま使えます。
       </p>
     </div>
 
