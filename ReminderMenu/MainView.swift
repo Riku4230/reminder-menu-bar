@@ -109,6 +109,7 @@ struct MainView: View {
     @EnvironmentObject private var updateChecker: UpdateChecker
 
     @FocusState private var inputFocused: Bool
+    @FocusState private var searchFocused: Bool
 
     @State private var showListDropdown = false
     @State private var showMoreMenu = false
@@ -242,12 +243,7 @@ struct MainView: View {
             checkForUpdatedVersion()
         }
         .onDisappear { fnDoubleTap.stop() }
-        .background(
-            Button(action: toggleInputMode) { EmptyView() }
-                .keyboardShortcut("/", modifiers: .command)
-                .opacity(0)
-                .frame(width: 0, height: 0)
-        )
+        .background(keyboardShortcutsLayer)
         .onChange(of: popoverHeight) { _, height in
             withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
                 app.requestedPopoverHeight = height
@@ -346,6 +342,51 @@ struct MainView: View {
     }
 
     @Environment(\.colorScheme) private var colorScheme
+
+    /// アプリ内ショートカットを集約した不可視レイヤー。
+    /// SwiftUI の `.keyboardShortcut` 付き Button を `.background` に重ねることで
+    /// popover が前面にある間だけ有効化される（NSPopover の resigned 時は無効）。
+    private var keyboardShortcutsLayer: some View {
+        Group {
+            // ⌘N — 入力欄にフォーカス
+            shortcutButton(key: "n", modifiers: .command) {
+                inputFocused = true
+            }
+            // ⌘F — 検索にフォーカス
+            shortcutButton(key: "f", modifiers: .command) {
+                searchFocused = true
+            }
+            // ⌘ / — 通常 / AI モード切替
+            shortcutButton(key: "/", modifiers: .command) {
+                toggleInputMode()
+            }
+            // ⌘1〜4 — スマートリスト切替
+            shortcutButton(key: "1", modifiers: .command) {
+                store.selection = .smart(.today)
+            }
+            shortcutButton(key: "2", modifiers: .command) {
+                store.selection = .smart(.scheduled)
+            }
+            shortcutButton(key: "3", modifiers: .command) {
+                store.selection = .smart(.all)
+            }
+            shortcutButton(key: "4", modifiers: .command) {
+                store.selection = .smart(.important)
+            }
+            // ⎋ — popover を閉じる
+            shortcutButton(key: .escape, modifiers: []) {
+                NSApp.keyWindow?.close()
+            }
+        }
+        .opacity(0)
+        .frame(width: 0, height: 0)
+    }
+
+    @ViewBuilder
+    private func shortcutButton(key: KeyEquivalent, modifiers: EventModifiers, action: @escaping () -> Void) -> some View {
+        Button(action: action) { EmptyView() }
+            .keyboardShortcut(key, modifiers: modifiers)
+    }
 
     private var glassBackground: some View {
         ZStack {
@@ -506,6 +547,7 @@ struct MainView: View {
             TextField("検索", text: $store.searchText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
+                .focused($searchFocused)
             if !store.searchText.isEmpty {
                 Button {
                     store.searchText = ""
@@ -1406,42 +1448,91 @@ struct MainView: View {
     private var shortcutSheet: some View {
         MRSettingsSurface(
             title: "ショートカット管理",
-            subtitle: "メニューを開くグローバルショートカットを変更します。",
+            subtitle: "グローバルホットキーとアプリ内ショートカットを確認・変更します。",
             size: .dialog,
             onClose: { showShortcutSheet = false }
         ) {
             VStack(alignment: .leading, spacing: MRTheme.Space.xl) {
-                MRInfoBanner(
-                    systemImage: "keyboard",
-                    text: "現在: \(hotKeys.shortcut.displayText)",
-                    tint: MRTheme.accent
-                )
+                // グローバルホットキー (popover を開く)
+                VStack(alignment: .leading, spacing: MRTheme.Space.md) {
+                    Text("グローバルホットキー")
+                        .font(.system(size: MRTheme.FontSize.label, weight: .bold))
+                        .foregroundStyle(Color.primaryText)
+                    Text("メニューバーのポップオーバーを呼び出すキー。アプリの外からでも有効です。")
+                        .font(.system(size: MRTheme.FontSize.footnote))
+                        .foregroundStyle(Color.secondaryText)
 
-                ZStack {
-                    RoundedRectangle(cornerRadius: MRTheme.Radius.xl, style: .continuous)
-                        .fill(MRTheme.Surface.field)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: MRTheme.Radius.xl, style: .continuous)
-                                .stroke(MRTheme.Border.accent, lineWidth: 1)
-                        )
-                    VStack(spacing: MRTheme.Space.md) {
-                        Image(systemName: "keyboard")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(MRTheme.accent)
-                        Text("登録したいキーを押す")
-                            .font(.system(size: MRTheme.FontSize.label, weight: .semibold))
-                            .foregroundStyle(Color.primaryText)
+                    MRInfoBanner(
+                        systemImage: "keyboard",
+                        text: "現在: \(hotKeys.shortcut.displayText)",
+                        tint: MRTheme.accent
+                    )
+
+                    ZStack {
+                        RoundedRectangle(cornerRadius: MRTheme.Radius.xl, style: .continuous)
+                            .fill(MRTheme.Surface.field)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: MRTheme.Radius.xl, style: .continuous)
+                                    .stroke(MRTheme.Border.accent, lineWidth: 1)
+                            )
+                        VStack(spacing: MRTheme.Space.sm) {
+                            Image(systemName: "keyboard")
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundStyle(MRTheme.accent)
+                            Text("登録したいキーを押す")
+                                .font(.system(size: MRTheme.FontSize.footnote, weight: .semibold))
+                                .foregroundStyle(Color.primaryText)
+                        }
+                        ShortcutRecorder { shortcut in
+                            hotKeys.updateShortcut(shortcut)
+                            app.showToast(ToastMessage(kind: .success, title: "ショートカットを登録しました", detail: shortcut.displayText))
+                        }
                     }
-                    ShortcutRecorder { shortcut in
-                        hotKeys.updateShortcut(shortcut)
-                        app.showToast(ToastMessage(kind: .success, title: "ショートカットを登録しました", detail: shortcut.displayText))
-                    }
+                    .frame(height: 110)
                 }
-                .frame(height: 140)
+
+                Divider().opacity(0.4)
+
+                // アプリ内ショートカット（read-only 一覧）
+                VStack(alignment: .leading, spacing: MRTheme.Space.md) {
+                    Text("アプリ内ショートカット")
+                        .font(.system(size: MRTheme.FontSize.label, weight: .bold))
+                        .foregroundStyle(Color.primaryText)
+                    Text("ポップオーバーが開いている時に有効なキー。現バージョンは固定で、将来カスタマイズ可能にする予定です。")
+                        .font(.system(size: MRTheme.FontSize.footnote))
+                        .foregroundStyle(Color.secondaryText)
+
+                    VStack(spacing: 0) {
+                        ForEach(Array(AppShortcutAction.displayOrder.enumerated()), id: \.element.id) { index, action in
+                            HStack {
+                                Text(action.label)
+                                    .font(.system(size: MRTheme.FontSize.body))
+                                    .foregroundStyle(Color.primaryText)
+                                Spacer()
+                                Text(action.displayShortcut)
+                                    .font(.system(size: MRTheme.FontSize.footnote, weight: .semibold).monospacedDigit())
+                                    .foregroundStyle(Color.secondaryText)
+                                    .padding(.horizontal, MRTheme.Space.sm)
+                                    .padding(.vertical, 3)
+                                    .background(MRTheme.Surface.inset, in: RoundedRectangle(cornerRadius: MRTheme.Radius.sm, style: .continuous))
+                            }
+                            .padding(.horizontal, MRTheme.Space.md)
+                            .padding(.vertical, MRTheme.Space.sm)
+                            if index < AppShortcutAction.displayOrder.count - 1 {
+                                Divider().opacity(0.25)
+                            }
+                        }
+                    }
+                    .background(MRTheme.Surface.field, in: RoundedRectangle(cornerRadius: MRTheme.Radius.lg, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: MRTheme.Radius.lg, style: .continuous)
+                            .stroke(MRTheme.Border.hairline, lineWidth: 0.5)
+                    )
+                }
             }
         } footer: {
             HStack(spacing: MRTheme.Space.md) {
-                Button("デフォルトに戻す") {
+                Button("グローバルをデフォルトに") {
                     hotKeys.updateShortcut(.defaultShortcut)
                 }
                 .buttonStyle(.mr(.secondary, size: .sm))
