@@ -1,48 +1,70 @@
+<div align="center">
+
+<img src="docs/images/hero.png" alt="Nudge — AI-powered reminders for macOS menu bar" width="100%" />
+
 # Nudge
 
-<p align="center">
-  <img src="docs/images/hero.png" alt="Nudge — AI-powered reminders for macOS menu bar" width="100%" />
-</p>
+**AI で速くなった、メニューバーの Apple リマインダー**
 
-> macOS のメニューバーから純正 Apple リマインダーをすばやく操作する、AI 搭載の常駐アプリ。
+[![Latest Release](https://img.shields.io/github/v/release/Riku4230/Nudge?style=flat-square&color=4f7bf3)](https://github.com/Riku4230/Nudge/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Riku4230/Nudge/total?style=flat-square&color=4f7bf3)](https://github.com/Riku4230/Nudge/releases)
+[![License](https://img.shields.io/github/license/Riku4230/Nudge?style=flat-square&color=4f7bf3)](LICENSE)
+[![macOS](https://img.shields.io/badge/macOS-14+-black?style=flat-square&logo=apple)](https://github.com/Riku4230/Nudge/releases/latest)
+[![Swift](https://img.shields.io/badge/Swift-5.9+-orange?style=flat-square&logo=swift)](https://swift.org)
 
-EventKit で純正リマインダーを読み書きするので、書いたタスクは iCloud 経由で iPhone / iPad / Mac の純正アプリにそのまま同期されます。Nudge を消しても、データは純正リマインダー.app に残ります。
+[**インストール**](#-インストール) ·
+[**機能**](#-機能) ·
+[**使い方**](#-使い方) ·
+[**設計**](#-設計)
 
-## 特徴
+</div>
 
-- **メニューバー常駐 / Dock 非表示** — `Fn` ダブルタップ or 任意のグローバルショートカットで開閉
-- **Glass Float デザイン** — ライト / ダーク / システム追従の外観切替
-- **3 状態チェックボックス** — 未着手 / 進行中 / 完了（進行中は `#wip` タグで iCloud 同期）
-- **サブタスクの追加・階層表示** — Shortcuts.app + SQLite 直読で純正アプリと同じ親子関係を扱える
-- **AI モード（マルチプロバイダー対応）** — Claude Code CLI / Anthropic API / OpenAI / Gemini から選択可能
-  - 自然言語からのリマインダー追加（「明日 15 時に歯医者 https://...」→ 期日 / メモ / URL を抽出）
-  - 親タスクをサブタスクに自動分解（`✨ AIで生成` ボタン）
-- **カレンダービュー** — 月グリッドにリマインダーをリスト色のドットで表示、日本の祝日に対応
-- **スマートリスト** — 今日 / 予定 / すべて / フラグあり
-- **iCloud 共有リスト対応** — 純正アプリで作ったリストはそのまま使える
+---
 
-## インストール
+純正 Apple リマインダーのデータを **そのまま** メニューバーから扱えます。EventKit で読み書きするので、書いたタスクは iCloud 経由で iPhone / iPad / Mac の純正アプリに即時同期されます。Nudge を消してもデータは純正アプリに残ります。
 
-最も簡単なのは Homebrew。または GitHub Releases から `.dmg` を落としてください。
+その上に **AI 入力**、**サブタスク階層**、**3 状態ステータス**、**カレンダー俯瞰** といった、純正リマインダーが弱い「Mac で素早く書いて閉じる」体験を被せています。
 
-### Homebrew
+## ⚡ クイックスタート
 
 ```bash
 brew tap Riku4230/nudge https://github.com/Riku4230/Nudge.git
 brew install --cask nudge
 ```
 
-> Tap 用の URL を明示しているのは、Cask が本リポジトリの `Casks/` ディレクトリに同居しているためです。専用の `homebrew-nudge` リポジトリを作る場合は URL は省略可能になります。
+> 1 行で完了。Homebrew が無い場合は [Releases](https://github.com/Riku4230/Nudge/releases/latest) から `.dmg` をダウンロード。
 
-### GitHub Releases から .dmg
+## ✨ 機能
 
-[Latest Release](https://github.com/Riku4230/Nudge/releases/latest) ページから `Nudge-*.dmg` をダウンロードして開き、`Nudge.app` を `Applications` にドラッグ。
+| | |
+|---|---|
+| 🪶 **メニューバー常駐** | Dock 非表示、`Fn` ダブルタップ or グローバルショートカットで瞬時に開閉 |
+| 🤖 **AI で自然言語追加** | 「明日 15 時に歯医者 https://...」で日付・メモ・URL を自動抽出 |
+| 🎯 **3 状態ステータス** | 未着手 / 進行中 / 完了。進行中は `#wip` タグで iCloud 同期 |
+| 🌳 **サブタスク階層** | Shortcuts.app 経由で書き込み + SQLite 直読で純正と同じ親子関係 |
+| 🪄 **AI でサブタスク自動分解** | 親タスクを 3〜7 件のサブタスクに展開、編集して一括登録 |
+| 📅 **カレンダービュー** | 月グリッドにリスト色のドットで予定を俯瞰、日本の祝日対応 |
+| 🔔 **メニューバー脈動通知** | アラーム時刻にアイコンが光るだけ、常時表示の数字バッジは無し |
+| 🔌 **マルチプロバイダー AI** | Claude Code / Anthropic / OpenAI / Gemini を切替、API キーは Keychain |
+| 🌗 **ライト / ダーク / システム追従** | Glass Float デザイン、即時切替 |
+| ☁️ **iCloud 共有リスト対応** | 純正アプリで作ったリストはそのまま使える |
 
-> 初回起動時に Gatekeeper の警告が出る場合は、**システム設定 → プライバシーとセキュリティ → 「このまま開く」** を押してください（コード署名のためには Apple Developer Program 加入が必要なため、現状は未署名で配布しています）。
+## 🚀 インストール
+
+### Homebrew（推奨）
+
+```bash
+brew tap Riku4230/nudge https://github.com/Riku4230/Nudge.git
+brew install --cask nudge
+```
+
+### `.dmg` を直接ダウンロード
+
+[Latest Release](https://github.com/Riku4230/Nudge/releases/latest) から `Nudge-*.dmg` を取得 → 開いて `Nudge.app` を `Applications` にドラッグ。
+
+> 初回起動で Gatekeeper 警告が出たら **システム設定 → プライバシーとセキュリティ → 「このまま開く」** で起動できます。
 
 ### ソースからビルド
-
-要件: macOS 14 以降、Swift 5.9 以降、Xcode コマンドラインツール。
 
 ```bash
 git clone https://github.com/Riku4230/Nudge.git
@@ -50,88 +72,98 @@ cd Nudge
 ./scripts/build_app.sh --install
 ```
 
-`~/Applications/Nudge.app` にインストールされます。
+要件: macOS 14+、Swift 5.9+、Xcode コマンドラインツール。
 
-### 初回起動時
+## 🧭 初回起動
 
-初回はアプリ内オンボーディングウィザードが表示されます。以下を順に案内：
+アプリ内オンボーディングウィザードが 4 ステップで案内します。
 
-1. **リマインダーへのフルアクセス** — ダイアログが出るので「許可」
-2. **サブタスク機能の有効化** — Shortcuts.app に専用ショートカットを取り込む
+1. **リマインダーへのフルアクセス** — システムダイアログで許可
+2. **サブタスク Shortcut の取り込み** — Shortcuts.app に専用ショートカットを追加
 3. **フルディスクアクセス** — サブタスクの階層表示用（任意）
 4. **AI プロバイダー設定** — 自然言語追加・サブタスク自動生成用（任意）
 
-各ステップは「あとで」スキップ可能。設定後は「⋯」メニューからいつでも変更できます。
+各ステップは「あとで」スキップ可能。設定は「⋯」メニューからいつでも変更できます。
 
-## サブタスク機能のセットアップ
+## 🤖 AI モード
 
-EventKit にはサブタスクの公開 API が無いため、Nudge は Shortcuts.app の「リマインダーを追加」アクション経由でサブタスクを書き込みます。アプリにバンドルされたショートカットを 1 度だけ取り込んでください。
+入力欄でモードを `AI` に切替えると、自然言語が解釈されます。
+
+| 入力 | 結果 |
+|---|---|
+| `明日 15 時に歯医者` | 「歯医者」明日 15:00 |
+| `今週金曜までに資料作る` | 「資料作る」今週金曜 |
+| `https://example.com の記事を読む` | 「記事を読む」+ URL |
+| `家事リストに洗濯と掃除を追加` | 2 件を「家事」リストに |
+
+### プロバイダー
+
+「⋯ → AI 設定」から以下を切替：
+
+| プロバイダー | 必要なもの |
+|---|---|
+| **Claude Code (CLI)** | `claude` コマンドが PATH に通っていれば即動く |
+| **Anthropic API** | [console.anthropic.com](https://console.anthropic.com/) の API キー |
+| **OpenAI** | [platform.openai.com](https://platform.openai.com/) の API キー |
+| **Google Gemini** | [aistudio.google.com](https://aistudio.google.com/) の API キー |
+
+API キーは macOS Keychain (Generic Password) にのみ保存され、平文ファイルやサーバーには出ません。
+
+### サブタスク自動分解
+
+親タスクを展開して **`✨ AIで生成`** をタップ → AI が 3〜7 件のサブタスクを提案 → 編集・追加・削除して **追加する** で一括登録。
+
+## 🌳 サブタスク機能の仕組み
+
+EventKit にはサブタスク用の公開 API が無いため、Nudge は次の方式で純正アプリと同じ親子関係を扱います：
+
+- **書き込み**: バンドルされた Shortcuts.app の専用ショートカット (`AddSubReminder.shortcut`) を `/usr/bin/shortcuts run` で叩く
+- **読み取り**: 純正アプリの SQLite (`~/Library/Group Containers/group.com.apple.reminders/...`) を read-only でスナップショットコピーして親子マップを抽出
+
+詳細は [サブタスクのセットアップ](#-サブタスクのセットアップ) 参照。
+
+## 🎯 進行中ステータス
+
+チェックボックスをタップで 3 状態サイクル：
+
+| 状態 | 表示 | 内部表現 |
+|:-:|:-:|---|
+| 未着手 | ◯ | `isCompleted = false`、`#wip` 無し |
+| 進行中 | スピナー | `isCompleted = false`、`#wip` タグ付与 |
+| 完了 | ✓ | `isCompleted = true` |
+
+`#wip` タグは iCloud 同期で iPhone でも見え、純正アプリ上でも編集可能。タグ名は `ReminderStore.swift` の `progressTag` で変更可。
+
+## 🌐 サブタスクのセットアップ
+
+オンボーディングで案内されますが、後から手動で行う手順：
 
 ### 1. ショートカットを取り込む
 
-`~/Applications/Nudge.app/Contents/Resources/AddSubReminder.shortcut` をダブルクリックすると Shortcuts.app の取り込みダイアログが開きます。**「ショートカットを追加」** を選択してください。
+```bash
+open ~/Applications/Nudge.app/Contents/Resources/AddSubReminder.shortcut
+```
 
-> アプリ内からも「⋯ → サブタスクを有効化」で同じファイルを開けます。
+Shortcuts.app の取り込みダイアログで **「ショートカットを追加」** を選択。名前は `ReminderMenu Add Subtask` のまま変更不可。
 
-ショートカットの名前は **`ReminderMenu Add Subtask`** のまま変更しないでください（Nudge から CLI で呼び出すための識別子です）。
-
-### 2. 階層表示（読み取り）の権限
-
-サブタスクの**追加**は上記だけで動きますが、**階層表示**（メニュー内で親 → 子をインデント表示）には純正リマインダー.app の SQLite を読む必要があり、**フルディスクアクセス** の許可が必要です：
+### 2. 階層表示にはフルディスクアクセスが必要
 
 ```
 システム設定 → プライバシーとセキュリティ → フルディスクアクセス → Nudge を ON
 ```
 
-未許可でもサブタスク自体は動作します。Nudge 内ではフラットに表示されますが、純正アプリ・iPhone では正しく階層表示されます。
+未許可でもサブタスクは追加できます（フラット表示にフォールバック）。純正アプリ・iPhone では正しく階層表示されます。
 
 ### 制限事項
 
-- macOS Shortcuts の「リマインダーを検索」アクションは ID フィルタを持たないため、親はタイトル + リストで特定します
-- 同一リスト内に未完了の同名リマインダーが複数あると、Nudge 側で `addSubtask` 呼び出し時にエラーを返します（誤った親への紐付けを防ぐため）
-- 階層は 1 段のみ対応（純正アプリの UI と同じ仕様）
+- macOS Shortcuts の「リマインダーを検索」アクションは ID フィルタを持たないため、親はタイトル + リストで特定
+- 同一リスト内に未完了の同名リマインダーが複数あるとエラー
+- 階層は 1 段のみ対応（純正アプリ仕様に追従）
 
-## AI モード
+## 🏗 設計
 
-メニュー下部の入力欄で「AI」モードを選択すると自然言語入力が解釈されます。
-
-| 入力例 | 解釈結果 |
-|---|---|
-| `明日 15 時に歯医者` | タイトル「歯医者」、明日 15:00 |
-| `今週金曜までに資料作る` | タイトル「資料作る」、今週金曜 |
-| `https://example.com の記事を読む` | タイトル「記事を読む」、URL セット |
-| `家事リストに洗濯と掃除を追加` | 2 件（洗濯 / 掃除）を「家事」リストへ |
-
-### プロバイダー設定
-
-「⋯ → AI 設定」から以下のいずれかを選択：
-
-| プロバイダー | 必要なもの |
-|---|---|
-| **Claude Code (CLI)** | `claude` コマンドが PATH に通っていること |
-| **Anthropic API** | `https://console.anthropic.com/` の API キー |
-| **OpenAI** | `https://platform.openai.com/` の API キー |
-| **Google Gemini** | `https://aistudio.google.com/` の API キー |
-
-API キーは Keychain (Generic Password) に保存されます。
-
-### サブタスク自動生成
-
-親タスクを展開して `✨ AIで生成` を押すと、AI が 3〜7 件のサブタスクを提案します。確認ポップオーバーで編集・削除・追加してから一括登録できます。
-
-## 進行中ステータス
-
-チェックボックスをタップすると 3 状態をサイクルします：
-
-| 状態 | 表示 | 内部表現 |
-|---|---|---|
-| 未着手 | 空の円 | `isCompleted = false` / `#wip` なし |
-| 進行中 | アクセント色のスピナー | `isCompleted = false` / `#wip` タグあり |
-| 完了 | 塗りつぶし + チェック | `isCompleted = true` |
-
-`#wip` タグは純正リマインダー.app・iPhone でもタグとして見え、iCloud 同期されます。タグ名は `ReminderMenu/ReminderStore.swift` の `progressTag` 定数で変更可能です。
-
-## アーキテクチャ
+<details>
+<summary>アーキテクチャ図と主要ファイル</summary>
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -148,8 +180,7 @@ API キーは Keychain (Generic Password) に保存されます。
 │  ┌────▼───┐ ┌────▼─────┐ ┌──▼──────────┐     │
 │  │EventKit│ │Shortcuts │ │ SQLite      │     │
 │  │read/   │ │ CLI      │ │ read-only   │     │
-│  │write   │ │(subtask  │ │(parent map) │     │
-│  │        │ │ create)  │ │             │     │
+│  │write   │ │(subtask) │ │(parent map) │     │
 │  └────────┘ └──────────┘ └─────────────┘     │
 │                                              │
 │  ┌────────────────────────────────────┐      │
@@ -161,47 +192,76 @@ API キーは Keychain (Generic Password) に保存されます。
    iCloud Reminders  Shortcuts.app  ~/Library/.../Reminders
 ```
 
-### 主要なファイル
+### 主要ファイル
 
 | ファイル | 役割 |
 |---|---|
-| `ReminderStore.swift` | EventKit の読み書き、進行中ステータス管理、サブタスク統合 |
-| `RemindersSQLite.swift` | 純正アプリの SQLite から親子マップを読む |
-| `ShortcutsBridge.swift` | `/usr/bin/shortcuts run` の Swift ラッパー |
-| `AIProvider.swift` | LLM プロバイダー抽象（Claude/OpenAI/Gemini を統一） |
-| `Providers/*.swift` | 各 LLM の実装 |
-| `NLParser.swift` | 自然言語 → ReminderDraft / サブタスク候補 |
+| `ReminderStore.swift` | EventKit の読み書き、進行中ステータス、サブタスク統合 |
+| `RemindersSQLite.swift` | 純正 DB から親子マップ抽出（read-only） |
+| `ShortcutsBridge.swift` | `shortcuts run` の Swift ラッパー |
+| `AIProvider.swift` + `Providers/*.swift` | LLM プロバイダー抽象と実装 |
+| `NLParser.swift` | 自然言語 → `ReminderDraft` / サブタスク候補 |
 | `Holidays.swift` | 日本の祝日をルールベース計算 |
-| `MainView.swift` | メニューバーポップオーバーのトップビュー |
-| `ReminderRow.swift` | 個別リマインダー行（編集 UI 付き） |
-| `CalendarView.swift` | 月カレンダービュー |
+| `MainView.swift` | メニューバーポップオーバーのトップ |
+| `OnboardingView.swift` | 初回起動ウィザード |
 
-## なぜ作ったか
+</details>
 
-純正リマインダーは iCloud 同期や iOS との連携が強いが、Mac での「サクッと開いて書き込んで閉じる」が弱い。Things や OmniFocus は別データストアで、結局純正アプリに残っているタスクと混ざらない。
+## 💡 なぜ作ったか
 
-Nudge は **純正のデータをそのまま使いつつ**、Mac で快適にタスクを足せる UI を被せる、という路線で作っています。
+純正リマインダーは iCloud 同期や iOS との連携が強いが、Mac での「サクッと開いて書いて閉じる」体験が弱い。Things や OmniFocus は別データストアで、純正アプリに残っているタスクと混ざらない。
 
-## 開発
+Nudge は **純正のデータをそのまま使いつつ**、Mac で快適にタスクを書ける UI を被せる、というポジションを取っています。
+
+## 🛠 開発
 
 ```bash
 # デバッグビルド
 swift build
 
-# 実機で動かす（リリースビルド + ~/Applications にインストール）
+# リリースビルド + ~/Applications にインストール
 ./scripts/build_app.sh --install
 
-# 起動中のプロセスを kill して再起動
+# 再起動
 pkill -f Nudge.app && open ~/Applications/Nudge.app
 ```
 
-依存ライブラリ無し（SwiftPM だけ、SQLite3 はシステム）。Swift Package Manager のみでビルドできます。
+外部依存なし（Swift Package Manager のみ、SQLite3 はシステム）。
 
-## ライセンス
+### リリース手順
 
-MIT License — 自由に fork / 改変してください。
+```bash
+git tag v0.X.Y
+git push origin v0.X.Y
+```
 
-## クレジット
+GitHub Actions が自動で:
+1. macOS 14 でビルド
+2. `.dmg` 生成 + SHA256 計算
+3. GitHub Release 公開
+4. Homebrew Cask の version / sha256 を main に自動 push
 
+## 🤝 Contributing
+
+PR / Issue 歓迎。
+
+- バグ報告: [Issue を開く](https://github.com/Riku4230/Nudge/issues/new)
+- 機能要望: [Discussions](https://github.com/Riku4230/Nudge/discussions)（あれば）か Issue
+- セキュリティ: [SECURITY.md](SECURITY.md) を参照
+
+## 📄 ライセンス
+
+MIT License — 自由に fork / 改変してください。詳細は [LICENSE](LICENSE) を参照。
+
+## 🙏 クレジット
+
+- 自然言語解釈: [Anthropic Claude](https://www.anthropic.com/) / [OpenAI](https://openai.com/) / [Google Gemini](https://ai.google.dev/)
 - アイコン: `Resources/AppIcon.icns`
-- 自然言語解釈: Anthropic Claude / OpenAI GPT / Google Gemini
+
+---
+
+<div align="center">
+
+Made with ❤️ for the macOS Reminders ecosystem
+
+</div>
