@@ -259,8 +259,10 @@ final class ReminderStore: NSObject, ObservableObject {
         Task { @MainActor in
             self.scanAndEmitPulses()
         }
-        pulseTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+        // Timer のコールバックは非アクター文脈で呼ばれるので、self は Task 側で
+        // weak キャプチャするだけにする（Timer クロージャ自体は self を捕まえない）
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+            Task { @MainActor [weak self] in
                 self?.scanAndEmitPulses()
             }
         }
