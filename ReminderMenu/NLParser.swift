@@ -44,12 +44,16 @@ enum NLParser {
         return response.tasks.compactMap { task in
             let title = task.title.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !title.isEmpty else { return nil }
+            let memo = task.memo?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let urlString = task.url?.trimmingCharacters(in: .whitespacesAndNewlines)
             return ReminderDraft(
                 title: title,
                 dueDate: task.dueDate,
                 includesTime: task.includesTime,
                 priority: task.priority,
-                listName: task.list
+                listName: task.list,
+                memo: (memo?.isEmpty ?? true) ? nil : memo,
+                url: (urlString?.isEmpty ?? true) ? nil : URL(string: urlString!)
             )
         }
     }
@@ -71,8 +75,15 @@ enum NLParser {
         Parse the user text into reminder tasks. Convert relative dates to absolute ISO-8601 datetimes.
         If the user names a list, set "list" to that list name. If no time is specified, set includesTime=false and dueDate at local noon for that date.
         Priority must be 0 for none, 9 for low, 5 for medium, 1 for high.
-        Return JSON only in this shape:
-        {"tasks":[{"title":"歯医者","dueDate":"2026-04-28T15:00:00+09:00","includesTime":true,"priority":0,"list":"家事"}]}
+
+        Extract these optional fields when the user provides them:
+        - "memo": any descriptive notes, context, sub-points, or details. Strip out the time/date/priority/list bits already covered by other fields. If nothing meaningful remains besides the title, omit memo (set to null or skip).
+        - "url": if the user pastes or mentions a URL (http/https), set it here. Otherwise omit.
+
+        Do NOT invent tags or hashtags. Do not return a "tags" field.
+
+        Return JSON only in this shape (memo and url are optional):
+        {"tasks":[{"title":"歯医者","dueDate":"2026-04-28T15:00:00+09:00","includesTime":true,"priority":0,"list":"家事","memo":"治療の続き、保険証持参","url":"https://example.com/clinic"}]}
 
         User text:
         \(input)
@@ -97,6 +108,8 @@ private struct ClaudeTask: Codable {
     var includesTime: Bool
     var priority: Int
     var list: String?
+    var memo: String?
+    var url: String?
 }
 
 private struct LocalParser {
@@ -112,6 +125,7 @@ private struct LocalParser {
 
         return segments.compactMap { segment in
             var text = segment
+            let extractedURL = extractURL(from: &text)
             let localPriority = extractPriority(from: &text)
             let parsedDate = extractDueDate(from: &text)
             let title = cleanTitle(text)
@@ -121,9 +135,26 @@ private struct LocalParser {
                 dueDate: parsedDate.date,
                 includesTime: parsedDate.includesTime,
                 priority: localPriority ?? globalPriority ?? 0,
-                listName: listName
+                listName: listName,
+                memo: nil,
+                url: extractedURL
             )
         }
+    }
+
+    /// テキストから URL を 1 つ抽出して取り除く。NSDataDetector で http/https を検出。
+    private func extractURL(from text: inout String) -> URL? {
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return nil
+        }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = detector.firstMatch(in: text, range: range),
+              let matchRange = Range(match.range, in: text),
+              let url = match.url else {
+            return nil
+        }
+        text.removeSubrange(matchRange)
+        return url
     }
 
     private func extractListName(from text: inout String) -> String? {

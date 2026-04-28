@@ -164,6 +164,8 @@ struct ReminderDraft: Identifiable, Codable, Equatable {
     var includesTime: Bool
     var priority: Int
     var listName: String?
+    var memo: String?
+    var url: URL?
 
     init(
         id: UUID = UUID(),
@@ -171,7 +173,9 @@ struct ReminderDraft: Identifiable, Codable, Equatable {
         dueDate: Date? = nil,
         includesTime: Bool = false,
         priority: Int = 0,
-        listName: String? = nil
+        listName: String? = nil,
+        memo: String? = nil,
+        url: URL? = nil
     ) {
         self.id = id
         self.title = title
@@ -179,6 +183,8 @@ struct ReminderDraft: Identifiable, Codable, Equatable {
         self.includesTime = includesTime
         self.priority = priority
         self.listName = listName
+        self.memo = memo
+        self.url = url
     }
 }
 
@@ -721,6 +727,12 @@ final class ReminderStore: NSObject, ObservableObject {
             reminder.priority = normalizedPriority(draft.priority)
             reminder.calendar = resolveCalendar(calendarID: fallbackCalendarID, listName: draft.listName)
             reminder.dueDateComponents = dateComponents(for: draft.dueDate, includesTime: draft.includesTime)
+            if let memo = draft.memo?.trimmingCharacters(in: .whitespacesAndNewlines), !memo.isEmpty {
+                reminder.notes = memo
+            }
+            if let url = draft.url {
+                reminder.url = url
+            }
             try eventStore.save(reminder, commit: false)
             titles.append(draft.title)
         }
