@@ -12,6 +12,8 @@ struct SubtaskGeneratorView: View {
     private struct Candidate: Identifiable {
         let id = UUID()
         var title: String
+        var memo: String
+        var memoExpanded: Bool
     }
 
     @State private var candidates: [Candidate] = []
@@ -134,31 +136,57 @@ struct SubtaskGeneratorView: View {
     }
 
     private func candidateRow(candidate: Binding<Candidate>) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "circle")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(MRTheme.accent.opacity(0.8))
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Image(systemName: "circle")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(MRTheme.accent.opacity(0.8))
 
-            TextField("サブタスク", text: candidate.title)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12.5))
-                .foregroundStyle(Color.primaryText)
-                .focused($focusedID, equals: candidate.id)
-                .disabled(isCommitting)
+                TextField("サブタスク", text: candidate.title)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(Color.primaryText)
+                    .focused($focusedID, equals: candidate.id)
+                    .disabled(isCommitting)
 
-            Button {
-                withAnimation(.easeOut(duration: 0.12)) {
-                    candidates.removeAll { $0.id == candidate.id }
+                Button {
+                    withAnimation(.easeOut(duration: 0.12)) {
+                        candidate.memoExpanded.wrappedValue.toggle()
+                    }
+                } label: {
+                    Image(systemName: candidate.memoExpanded.wrappedValue || !candidate.memo.wrappedValue.isEmpty ? "text.alignleft" : "text.append")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(candidate.memo.wrappedValue.isEmpty ? Color.tertiaryText : MRTheme.accent)
+                        .frame(width: 18, height: 18)
+                        .background(Color.black.opacity(0.04), in: Circle())
                 }
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(Color.tertiaryText)
-                    .frame(width: 18, height: 18)
-                    .background(Color.black.opacity(0.04), in: Circle())
+                .buttonStyle(.plain)
+                .help(candidate.memo.wrappedValue.isEmpty ? "メモを追加" : "メモを編集")
+
+                Button {
+                    withAnimation(.easeOut(duration: 0.12)) {
+                        candidates.removeAll { $0.id == candidate.id }
+                    }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(Color.tertiaryText)
+                        .frame(width: 18, height: 18)
+                        .background(Color.black.opacity(0.04), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .help("候補から削除")
             }
-            .buttonStyle(.plain)
-            .help("候補から削除")
+
+            if candidate.memoExpanded.wrappedValue || !candidate.memo.wrappedValue.isEmpty {
+                TextField("メモ（任意）", text: candidate.memo, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.secondaryText)
+                    .lineLimit(1...4)
+                    .padding(.leading, 19)
+                    .disabled(isCommitting)
+            }
         }
         .padding(.vertical, 3)
     }
@@ -213,18 +241,20 @@ struct SubtaskGeneratorView: View {
         isLoading = true
         errorMessage = nil
         let memo = store.memo(for: parent)
-        let titles = await NLParser.generateSubtasks(parentTitle: parent.title, parentMemo: memo.isEmpty ? nil : memo)
-        if titles.isEmpty {
+        let result = await NLParser.generateSubtasks(parentTitle: parent.title, parentMemo: memo.isEmpty ? nil : memo)
+        if result.isEmpty {
             isLoading = false
             errorMessage = "AI からの応答が空でした。Claude Code がインストールされているか確認してください。"
             return
         }
-        candidates = titles.map { Candidate(title: $0) }
+        candidates = result.map {
+            Candidate(title: $0.title, memo: $0.memo ?? "", memoExpanded: false)
+        }
         isLoading = false
     }
 
     private func addEmpty() {
-        let item = Candidate(title: "")
+        let item = Candidate(title: "", memo: "", memoExpanded: false)
         candidates.append(item)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             focusedID = item.id
@@ -232,18 +262,21 @@ struct SubtaskGeneratorView: View {
     }
 
     private func commit() async {
-        let titles = candidates
-            .map { $0.title.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        guard !titles.isEmpty else { return }
+        let entries = candidates.compactMap { c -> (title: String, memo: String?)? in
+            let title = c.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !title.isEmpty else { return nil }
+            let memo = c.memo.trimmingCharacters(in: .whitespacesAndNewlines)
+            return (title, memo.isEmpty ? nil : memo)
+        }
+        guard !entries.isEmpty else { return }
         isCommitting = true
 
         var failed: [String] = []
-        for title in titles {
+        for entry in entries {
             do {
-                try await store.addSubtask(under: parent, title: title)
+                try await store.addSubtask(under: parent, title: entry.title, memo: entry.memo)
             } catch {
-                failed.append(title)
+                failed.append(entry.title)
             }
         }
 

@@ -1,8 +1,13 @@
 import Foundation
 
 enum NLParser {
-    /// 親タスクからサブタスク候補を生成する。Claude CLI が無い／失敗時は空配列。
-    static func generateSubtasks(parentTitle: String, parentMemo: String?) async -> [String] {
+    struct SubtaskCandidate: Equatable {
+        var title: String
+        var memo: String?
+    }
+
+    /// 親タスクからサブタスク候補（title + memo）を生成する。Claude CLI が無い／失敗時は空配列。
+    static func generateSubtasks(parentTitle: String, parentMemo: String?) async -> [SubtaskCandidate] {
         let title = parentTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return [] }
         let memo = parentMemo?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -13,7 +18,7 @@ enum NLParser {
         return result ?? []
     }
 
-    private static func runClaudeSubtaskGenerator(parentTitle: String, parentMemo: String?) throws -> [String] {
+    private static func runClaudeSubtaskGenerator(parentTitle: String, parentMemo: String?) throws -> [SubtaskCandidate] {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["claude", "-p", subtaskPrompt(parentTitle: parentTitle, parentMemo: parentMemo)]
@@ -36,9 +41,15 @@ enum NLParser {
         guard let jsonData = jsonText.data(using: .utf8) else { return [] }
 
         let response = try JSONDecoder().decode(SubtaskResponse.self, from: jsonData)
-        return response.subtasks
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        return response.subtasks.compactMap { item -> SubtaskCandidate? in
+            let title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !title.isEmpty else { return nil }
+            let memo = item.memo?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return SubtaskCandidate(
+                title: title,
+                memo: (memo?.isEmpty ?? true) ? nil : memo
+            )
+        }
     }
 
     private static func subtaskPrompt(parentTitle: String, parentMemo: String?) -> String {
@@ -48,13 +59,15 @@ enum NLParser {
 
         Parent task: \(parentTitle)
         \(memoBlock)
-        Generate 3 to 7 concrete subtasks in Japanese. Each subtask should be:
-        - A short imperative phrase (about 5–25 characters)
-        - Independently actionable — no abstractions like "頑張る" / "計画する"
-        - Ordered roughly by execution sequence
+        Generate 3 to 7 concrete subtasks in Japanese. Each subtask should have:
+        - "title": A short imperative phrase (about 5–25 characters), independently actionable. Avoid abstractions like "頑張る" / "計画する". Order roughly by execution sequence.
+        - "memo": (optional) A 1–2 sentence note giving more context, hints, or sub-points. Omit when the title is self-explanatory.
 
         Return JSON only:
-        {"subtasks": ["会場を予約する", "招待状を送る"]}
+        {"subtasks": [
+          {"title": "会場を予約する", "memo": "見積もりを 3 社から取り、駐車場の有無を確認"},
+          {"title": "招待状を送る"}
+        ]}
         """
     }
 
@@ -160,7 +173,12 @@ private struct ClaudeParseResponse: Codable {
 }
 
 private struct SubtaskResponse: Codable {
-    var subtasks: [String]
+    var subtasks: [SubtaskItem]
+}
+
+private struct SubtaskItem: Codable {
+    var title: String
+    var memo: String?
 }
 
 private struct ClaudeTask: Codable {
