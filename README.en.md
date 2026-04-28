@@ -24,12 +24,17 @@ On top of that foundation, Hutch adds **AI input**, **subtask hierarchies**, **t
 
 ## Quick start
 
+Hutch is currently distributed as an unsigned, un-notarized OSS build. The safest way to use it is to review the source and build it locally.
+
 ```bash
-brew tap Riku4230/hutch https://github.com/Riku4230/Hutch.git
-brew install --cask hutch
+git clone https://github.com/Riku4230/Hutch.git
+cd Hutch
+./scripts/build_app.sh --install
 ```
 
-> One line. No Homebrew? Grab the `.dmg` from [Releases](https://github.com/Riku4230/Hutch/releases/latest).
+Requirements: macOS 14+, Swift 5.9+, Xcode Command Line Tools.
+
+A prebuilt `.dmg` and a Homebrew Cask are also published, but they are unsigned and intended for advanced users. See [Install](#install) for details.
 
 ## Why "Hutch"?
 
@@ -58,20 +63,9 @@ That's the whole idea: park your reminders on a shelf in your menu bar. **Same d
 
 ## Install
 
-### Homebrew (recommended)
+### 1. Recommended: Build from source
 
-```bash
-brew tap Riku4230/hutch https://github.com/Riku4230/Hutch.git
-brew install --cask hutch
-```
-
-### `.dmg` direct download
-
-Grab `Hutch-*.dmg` from [the latest release](https://github.com/Riku4230/Hutch/releases/latest), open it, and drag `Hutch.app` into `Applications`.
-
-> If Gatekeeper warns you on first launch, head to **System Settings → Privacy & Security → "Open Anyway"**.
-
-### From source
+Hutch does not yet ship Apple Developer ID-signed and notarized builds. The safest install path is to review the source and build it locally.
 
 ```bash
 git clone https://github.com/Riku4230/Hutch.git
@@ -79,7 +73,43 @@ cd Hutch
 ./scripts/build_app.sh --install
 ```
 
-Requires macOS 14+, Swift 5.9+, and Xcode command-line tools.
+Requirements:
+
+- macOS 14+
+- Swift 5.9+
+- Xcode Command Line Tools
+
+### 2. Advanced: Unsigned `.dmg`
+
+Grab `Hutch-*.dmg` from [the latest release](https://github.com/Riku4230/Hutch/releases/latest), open it, and drag `Hutch.app` into `Applications`.
+
+This build is **unsigned and not notarized**. macOS Gatekeeper may block it on first launch. If you care about security, build from source instead.
+
+#### Verifying the checksum
+
+Each release attaches a `Hutch-vX.Y.Z.dmg.sha256` file. From the directory where you downloaded the `.dmg`:
+
+```bash
+shasum -a 256 -c Hutch-v0.2.0.dmg.sha256
+```
+
+You should see `OK`. Anything else means the file was tampered with.
+
+<details>
+<summary>Opening an unsigned build</summary>
+
+If you understand the risk and want to continue, go to **System Settings → Privacy & Security → "Open Anyway"**. Only do this if you trust Hutch.
+
+</details>
+
+### 3. Advanced: Homebrew Cask
+
+```bash
+brew tap Riku4230/hutch https://github.com/Riku4230/Hutch.git
+brew install --cask hutch
+```
+
+The Homebrew Cask delivers the same **unsigned, un-notarized** build. The cask pins the `.dmg` SHA256, so Homebrew verifies integrity automatically on download.
 
 ## First launch
 
