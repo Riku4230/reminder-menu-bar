@@ -598,12 +598,24 @@ struct MainView: View {
                         .foregroundStyle(MRTheme.accent)
                 }
 
-                TextField(inputMode == .ai ? "自然言語で追加…" : "新規リマインダー…", text: $inputText)
+                TextField(
+                    inputMode == .ai ? "自然言語で追加…" : "新規リマインダー…",
+                    text: $inputText,
+                    axis: .vertical
+                )
                     .textFieldStyle(.plain)
                     .font(.system(size: 13.5))
+                    .lineLimit(1...8)
                     .focused($inputFocused)
-                    .onSubmit(submitInput)
                     .disabled(isParsing)
+                    .onKeyPress(.return) {
+                        // Shift+Return は改行を許可、それ以外は送信
+                        if NSEvent.modifierFlags.contains(.shift) {
+                            return .ignored
+                        }
+                        submitInput()
+                        return .handled
+                    }
 
                 if inputMode != .ai {
                     Button {
