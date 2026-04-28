@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ReminderRow: View {
     @EnvironmentObject private var store: ReminderStore
+    @EnvironmentObject private var aiSettings: AISettings
 
     let reminder: EKReminder
     var indentLevel: Int = 0
@@ -139,18 +140,17 @@ struct ReminderRow: View {
             ZStack {
                 let calColor = store.color(for: reminder.calendar)
                 Circle()
-                    .stroke(calColor, lineWidth: 1.6)
+                    .stroke(calColor.opacity(progressState == .inProgress ? 0.25 : 1.0), lineWidth: 1.6)
                     .frame(width: 18, height: 18)
 
                 switch progressState {
                 case .notStarted:
                     EmptyView()
                 case .inProgress:
-                    // 中央の小円塗りで「進行中」を表現（⊙）
-                    Circle()
-                        .fill(calColor)
-                        .frame(width: 9, height: 9)
-                        .transition(.scale.combined(with: .opacity))
+                    // 進行中: 短い弧が外周を回るスピナー風表現
+                    SpinnerArc(color: calColor)
+                        .frame(width: 18, height: 18)
+                        .transition(.opacity)
                 case .completed:
                     Circle()
                         .fill(calColor)
@@ -451,6 +451,7 @@ struct ReminderRow: View {
                         showSubtaskGenerator = false
                     }
                     .environmentObject(store)
+                    .environmentObject(aiSettings)
                 }
             }
         }
@@ -784,6 +785,29 @@ struct ReminderRow: View {
 }
 
 // MARK: - Inline meta item (no chip background)
+
+// MARK: - In-progress spinner arc
+
+/// 「進行中」を表すマーク。状態変化 / 再描画時に **1 周だけ** 回って止まる。
+/// 静止後は外周上部に弧が固定され、それ自体が「進行中」のサインとして残る。
+/// 常時回転だとリスト内で複数同時に動いて視覚ノイズになるため、フィードバック的な短アニメに留める。
+private struct SpinnerArc: View {
+    let color: Color
+    @State private var angle: Double = 0
+
+    var body: some View {
+        Circle()
+            .trim(from: 0, to: 0.22)
+            .stroke(color, style: StrokeStyle(lineWidth: 2.0, lineCap: .round))
+            .rotationEffect(.degrees(angle))
+            .onAppear {
+                // 一度だけ一周してそのまま静止（easeOut でラスト緩やかに減速）
+                withAnimation(.easeOut(duration: 1.4)) {
+                    angle = 360
+                }
+            }
+    }
+}
 
 private struct MetaItem: View {
     var systemName: String

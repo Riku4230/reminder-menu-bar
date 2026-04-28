@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let reminderStore = ReminderStore()
     private let appCoordinator = AppCoordinator()
     private let hotKeyManager = GlobalHotKeyManager()
+    private let aiSettings = AISettings()
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -78,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 .environmentObject(reminderStore)
                 .environmentObject(appCoordinator)
                 .environmentObject(hotKeyManager)
+                .environmentObject(aiSettings)
         )
 
         appCoordinator.$requestedPopoverHeight

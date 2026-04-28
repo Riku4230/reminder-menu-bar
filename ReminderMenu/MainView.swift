@@ -105,11 +105,13 @@ struct MainView: View {
     @EnvironmentObject private var store: ReminderStore
     @EnvironmentObject private var app: AppCoordinator
     @EnvironmentObject private var hotKeys: GlobalHotKeyManager
+    @EnvironmentObject private var aiSettings: AISettings
 
     @FocusState private var inputFocused: Bool
 
     @State private var showListDropdown = false
     @State private var showMoreMenu = false
+    @State private var showAISettings = false
     @State private var inputMode: InputMode = .normal
     @State private var listViewMode: ListViewMode = .list
     @StateObject private var fnDoubleTap = FnDoubleTapMonitor()
@@ -235,6 +237,11 @@ struct MainView: View {
         .sheet(isPresented: $showNewListSheet) {
             newListSheet
                 .frame(width: 340)
+                .preferredColorScheme(app.appearance.colorScheme)
+        }
+        .sheet(isPresented: $showAISettings) {
+            AISettingsSheet()
+                .environmentObject(aiSettings)
                 .preferredColorScheme(app.appearance.colorScheme)
         }
         .sheet(isPresented: $showShortcutSheet) {
@@ -596,24 +603,66 @@ struct MainView: View {
     }
 
     private var aiToggleButton: some View {
-        Button {
-            withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
-                inputMode = (inputMode == .ai) ? .normal : .ai
+        let isAI = inputMode == .ai
+        return Menu {
+            Button(isAI ? "通常モードに戻す" : "AI モードに切替") {
+                withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
+                    inputMode = isAI ? .normal : .ai
+                }
             }
+            Divider()
+            Section("AI プロバイダ") {
+                ForEach(AIProviderID.allCases) { provider in
+                    Button {
+                        aiSettings.providerID = provider
+                        withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
+                            inputMode = .ai
+                        }
+                    } label: {
+                        HStack {
+                            Text(provider.displayName)
+                            if aiSettings.providerID == provider {
+                                Image(systemName: "checkmark")
+                            }
+                            if provider.requiresAPIKey && !aiSettings.hasAPIKey(provider) {
+                                Image(systemName: "exclamationmark.circle")
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
+                }
+            }
+            Divider()
+            Button("AI 設定を開く…") { showAISettings = true }
         } label: {
-            let isAI = inputMode == .ai
-            let bgColor: Color = isAI ? MRTheme.accent : Color.black.opacity(0.04)
-            let borderColor: Color = isAI ? MRTheme.accent.opacity(0.6) : Color.black.opacity(0.08)
             Image(systemName: "sparkles")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(isAI ? Color.white : Color.secondaryText)
                 .frame(width: 26, height: 26)
-                .background(Circle().fill(bgColor))
-                .overlay(Circle().stroke(borderColor, lineWidth: 0.5))
+                .background(
+                    Circle().fill(isAI ? AnyShapeStyle(MRTheme.accent) : AnyShapeStyle(Color.black.opacity(0.05)))
+                )
+                .overlay(
+                    Circle().stroke(
+                        isAI ? MRTheme.accent.opacity(0.7) : Color.black.opacity(0.1),
+                        lineWidth: isAI ? 0.8 : 0.5
+                    )
+                )
+                .shadow(color: isAI ? MRTheme.accent.opacity(0.35) : .clear, radius: 6, y: 2)
+        } primaryAction: {
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
+                inputMode = isAI ? .normal : .ai
+            }
         }
+        .menuStyle(.button)
         .buttonStyle(.plain)
-        .help(inputMode == .ai ? "AI モード（クリックで通常）" : "通常モード（クリックで AI）")
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(isAI
+              ? "AI モード（\(aiSettings.providerID.displayName)）— 長押しでプロバイダ切替"
+              : "通常モード — 長押しで AI プロバイダ切替")
     }
+
 
     private var inputPanel: some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -1121,6 +1170,10 @@ struct MainView: View {
                     showMoreMenu = false
                     showShortcutSheet = true
                 }
+                ModernMenuRow(icon: "sparkles", label: "AI 設定") {
+                    showMoreMenu = false
+                    showAISettings = true
+                }
 
                 ModernMenuDivider()
 
@@ -1288,7 +1341,7 @@ struct MainView: View {
         } else {
             Task { @MainActor in
                 isParsing = true
-                let drafts = await NLParser.parse(text, availableLists: store.calendars)
+                let drafts = await NLParser.parse(text, availableLists: store.calendars, using: aiSettings.currentProvider())
                 do {
                     guard !drafts.isEmpty else {
                         app.showToast(ToastMessage(kind: .failure, title: "タスクを読み取れませんでした", detail: nil))
