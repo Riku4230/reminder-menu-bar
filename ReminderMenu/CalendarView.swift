@@ -31,6 +31,18 @@ struct CalendarView: View {
         reminders.filter { store.dueDate(for: $0) == nil }
     }
 
+    /// 選択日の翌日から 7 日間に期日があるリマインダーを「日付 -> 配列」で返す。
+    /// 該当する日のみキーに含める。
+    private var upcomingWeek: [(date: Date, items: [EKReminder])] {
+        let dayMap = remindersByDay
+        let start = calendar.startOfDay(for: selectedDate)
+        return (1...7).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: start) else { return nil }
+            let items = dayMap[date] ?? []
+            return items.isEmpty ? nil : (date: date, items: items)
+        }
+    }
+
     /// 「日付 -> その日のリマインダー」のインデックス
     private var remindersByDay: [Date: [EKReminder]] {
         var result: [Date: [EKReminder]] = [:]
@@ -50,6 +62,10 @@ struct CalendarView: View {
                 grid
                 Divider().opacity(0.3).padding(.vertical, 2)
                 selectedDaySection
+                if !upcomingWeek.isEmpty {
+                    Divider().opacity(0.3).padding(.vertical, 2)
+                    upcomingSection
+                }
                 if !datelessReminders.isEmpty {
                     Divider().opacity(0.3).padding(.vertical, 2)
                     datelessSection
@@ -267,6 +283,68 @@ struct CalendarView: View {
                 }
             }
         }
+    }
+
+    /// 選択日の翌日から最大 7 日先までを日ごとに並べる
+    private var upcomingSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(Color.secondaryText)
+                Text("今後 7 日間")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color.secondaryText)
+                    .tracking(0.3)
+                Text("\(upcomingWeek.reduce(0) { $0 + $1.items.count }) 件")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color.tertiaryText)
+                Spacer()
+            }
+            .padding(.horizontal, 4)
+            .padding(.bottom, 2)
+
+            LazyVStack(alignment: .leading, spacing: 8) {
+                ForEach(upcomingWeek, id: \.date) { day in
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack(spacing: 6) {
+                            Text(dayHeader(for: day.date))
+                                .font(.system(size: 10.5, weight: .semibold))
+                                .foregroundStyle(weekdayHeaderColor(for: day.date))
+                                .tracking(0.3)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 4)
+                        .padding(.bottom, 2)
+
+                        ForEach(day.items, id: \.calendarItemIdentifier) { reminder in
+                            ReminderRow(reminder: reminder)
+                                .padding(.horizontal, 4)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func dayHeader(for date: Date) -> String {
+        let today = calendar.startOfDay(for: Date())
+        let target = calendar.startOfDay(for: date)
+        let days = calendar.dateComponents([.day], from: today, to: target).day ?? 0
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ja_JP")
+        f.dateFormat = "M月d日(E)"
+        let suffix = f.string(from: date)
+        if days == 1 { return "明日 · " + suffix }
+        if days == 2 { return "明後日 · " + suffix }
+        return suffix
+    }
+
+    private func weekdayHeaderColor(for date: Date) -> Color {
+        let weekday = calendar.component(.weekday, from: date)
+        if weekday == 1 { return Color(red: 0.86, green: 0.36, blue: 0.36) }
+        if weekday == 7 { return Color(red: 0.36, green: 0.56, blue: 0.86) }
+        return Color.secondaryText
     }
 
     private var datelessSection: some View {
