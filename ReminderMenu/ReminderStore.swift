@@ -120,6 +120,14 @@ enum SortMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// 「未着手 / 進行中 / 完了」の 3 値ステータス。
+/// EventKit は完了状態しか持たないため、進行中は `#wip` タグの有無で擬似表現する。
+enum ProgressState {
+    case notStarted
+    case inProgress
+    case completed
+}
+
 enum ReminderSelection: Hashable {
     case smart(SmartList)
     case calendar(String)
@@ -139,6 +147,14 @@ struct ReminderGroup: Identifiable {
     let title: String?
     let color: Color
     let reminders: [EKReminder]
+}
+
+/// 親子関係を表す描画用のノード。同じリマインダーが複数 depth で表示される可能性は無いので
+/// id は EKReminder.calendarItemIdentifier をそのまま使う。
+struct ReminderTreeNode: Identifiable {
+    let reminder: EKReminder
+    let depth: Int
+    var id: String { reminder.calendarItemIdentifier }
 }
 
 struct ReminderDraft: Identifiable, Codable, Equatable {
@@ -178,6 +194,17 @@ final class ReminderStore: NSObject, ObservableObject {
     }
     @Published var sortMode: SortMode = .dueDate
     @Published var lastError: String?
+
+    /// child reminder identifier → parent reminder identifier。
+    /// SQLite から復元される。FDA 未許可など読めない場合は空のまま。
+    @Published private(set) var parentMap: [String: String] = [:]
+    /// 親子マップ取得が成功したかどうか。false の時は階層表示が無効化される。
+    @Published private(set) var hasFullDiskAccess: Bool = true
+
+    /// 進行中ステータスを表すタグ名（先頭の `#` は含めない）
+    static let progressTag = "wip"
+
+    private var childMap: [String: [String]] = [:]   // parentID -> [childID]
 
     private let eventStore = EKEventStore()
     private var activeFetch: Any?
@@ -353,8 +380,117 @@ final class ReminderStore: NSObject, ObservableObject {
                 guard let self else { return }
                 self.reminders = fetched ?? []
                 self.loadCalendars()
+                self.refreshParentMap()
             }
         }
+    }
+
+    /// SQLite から親子マップを再構築。FDA 未許可は静かに失敗してフラット表示にフォールバック。
+    private func refreshParentMap() {
+        do {
+            let map = try RemindersSQLite.loadParentMap()
+            self.parentMap = map
+            self.childMap = Dictionary(grouping: map, by: { $0.value })
+                .mapValues { $0.map(\.key) }
+            self.hasFullDiskAccess = true
+        } catch RemindersSQLite.AccessError.permissionDenied {
+            self.parentMap = [:]
+            self.childMap = [:]
+            self.hasFullDiskAccess = false
+        } catch {
+            // DB 不在やスキーマ差異は無視（フラット表示にフォールバック）
+            self.parentMap = [:]
+            self.childMap = [:]
+        }
+    }
+
+    // MARK: - Subtasks
+
+    /// 指定リマインダーのサブタスク（取得済み reminders から該当する子を返す）
+    func subtasks(of reminder: EKReminder) -> [EKReminder] {
+        let key = reminder.calendarItemIdentifier
+        guard let childIDs = childMap[key], !childIDs.isEmpty else { return [] }
+        let lookup = Dictionary(uniqueKeysWithValues: reminders.map { ($0.calendarItemIdentifier, $0) })
+        return childIDs.compactMap { lookup[$0] }
+    }
+
+    /// 指定リマインダーが他リマインダーのサブタスクなら親 EKReminder を返す
+    func parent(of reminder: EKReminder) -> EKReminder? {
+        guard let parentID = parentMap[reminder.calendarItemIdentifier] else { return nil }
+        return reminders.first { $0.calendarItemIdentifier == parentID }
+    }
+
+    func isSubtask(_ reminder: EKReminder) -> Bool {
+        parentMap[reminder.calendarItemIdentifier] != nil
+    }
+
+    /// Shortcuts.app 経由でサブタスクを追加。
+    /// EventKit に書き込み API が無いため `/usr/bin/shortcuts run` を呼び出す。
+    func addSubtask(under parent: EKReminder, title: String) async throws {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        try await ShortcutsBridge.addSubtask(
+            parentID: parent.calendarItemIdentifier,
+            title: trimmed,
+            listName: parent.calendar.title
+        )
+        // EKEventStoreChanged で勝手にリロードされるはずだが、Shortcuts 経由は通知が遅れることがあるので保険
+        try? await Task.sleep(nanoseconds: 400_000_000)
+        reloadReminders()
+    }
+
+    // MARK: - Progress State (in-progress via #wip tag)
+
+    /// 「未着手 / 進行中 / 完了」の 3 値を返す
+    func progressState(of reminder: EKReminder) -> ProgressState {
+        if reminder.isCompleted { return .completed }
+        return tags(for: reminder).contains(Self.progressTag) ? .inProgress : .notStarted
+    }
+
+    /// 状態を直接セット。完了時は `#wip` を外し、進行中時は付与する。
+    func setProgressState(_ state: ProgressState, for reminder: EKReminder) {
+        switch state {
+        case .notStarted:
+            removeWipSilently(reminder)
+            if reminder.isCompleted { reminder.isCompleted = false }
+            save(reminder)
+        case .inProgress:
+            if reminder.isCompleted { reminder.isCompleted = false }
+            if !tags(for: reminder).contains(Self.progressTag) {
+                addTag(Self.progressTag, to: reminder)
+                return // addTag が save までやる
+            }
+            save(reminder)
+        case .completed:
+            removeWipSilently(reminder)
+            if !reminder.isCompleted {
+                reminder.isCompleted = true
+                reminder.completionDate = Date()
+            }
+            save(reminder)
+        }
+    }
+
+    /// 状態を 未着手 → 進行中 → 完了 → 未着手 の順でサイクル。
+    func cycleProgressState(_ reminder: EKReminder) {
+        let next: ProgressState
+        switch progressState(of: reminder) {
+        case .notStarted: next = .inProgress
+        case .inProgress: next = .completed
+        case .completed: next = .notStarted
+        }
+        setProgressState(next, for: reminder)
+    }
+
+    /// `#wip` タグだけを取り除く（save は呼ばない）。複数の状態変更を 1 セーブにまとめるため。
+    private func removeWipSilently(_ reminder: EKReminder) {
+        let remaining = tags(for: reminder).filter { $0 != Self.progressTag }
+        reminder.notes = composeNotes(memo: memo(for: reminder), tags: remaining)
+    }
+
+    /// メタ表示用のタグ一覧。`#wip` はチェックボックスで表現するためタグチップからは除外する。
+    func displayTags(for reminder: EKReminder) -> [String] {
+        tags(for: reminder).filter { $0 != Self.progressTag }
     }
 
     func count(for smartList: SmartList) -> Int {

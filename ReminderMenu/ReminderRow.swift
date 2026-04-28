@@ -5,6 +5,7 @@ struct ReminderRow: View {
     @EnvironmentObject private var store: ReminderStore
 
     let reminder: EKReminder
+    var indentLevel: Int = 0
 
     @State private var isExpanded = false
     @State private var isEditingTitle = false
@@ -18,12 +19,22 @@ struct ReminderRow: View {
     @State private var showRecurrenceMenu = false
     @State private var showAlarmMenu = false
     @State private var editedURL: String = ""
+    @State private var isAddingSubtask = false
+    @State private var newSubtaskText = ""
+    @State private var subtaskInFlight = false
     @FocusState private var titleFocused: Bool
     @FocusState private var memoFocused: Bool
     @FocusState private var tagFocused: Bool
+    @FocusState private var subtaskFocused: Bool
 
     private var displayedAsCompleted: Bool {
         reminder.isCompleted || isCompleting
+    }
+
+    private var progressState: ProgressState {
+        // 完了アニメーション中は実体としては未完了でも視覚的には完了扱い
+        if isCompleting { return .completed }
+        return store.progressState(of: reminder)
     }
 
     var body: some View {
@@ -51,6 +62,16 @@ struct ReminderRow: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 4)
+        .padding(.leading, CGFloat(indentLevel) * 22)
+        .overlay(alignment: .leading) {
+            if indentLevel > 0 {
+                Rectangle()
+                    .fill(MRTheme.accent.opacity(0.28))
+                    .frame(width: 1.5)
+                    .padding(.leading, CGFloat(indentLevel) * 22 - 10)
+                    .padding(.vertical, 8)
+            }
+        }
         .contentShape(Rectangle())
         .opacity(rowOpacity)
         .scaleEffect(isCompleting ? 0.985 : 1, anchor: .leading)
@@ -100,24 +121,37 @@ struct ReminderRow: View {
     private var hasMeta: Bool {
         store.dueLabel(for: reminder) != nil
             || store.priorityLabel(for: reminder) != nil
-            || !store.tags(for: reminder).isEmpty
+            || !store.displayTags(for: reminder).isEmpty
+            || progressState == .inProgress
     }
 
-    // MARK: - Checkbox
+    // MARK: - Checkbox (3 states: 未着手 / 進行中 / 完了)
 
     private var checkbox: some View {
         Button {
             handleCheckboxTap()
         } label: {
             ZStack {
+                let calColor = store.color(for: reminder.calendar)
                 Circle()
-                    .stroke(store.color(for: reminder.calendar), lineWidth: 1.6)
+                    .stroke(calColor, lineWidth: 1.6)
                     .frame(width: 18, height: 18)
-                if displayedAsCompleted {
+
+                switch progressState {
+                case .notStarted:
+                    EmptyView()
+                case .inProgress:
+                    // 左半分塗りで「進行中」を表現
                     Circle()
-                        .fill(store.color(for: reminder.calendar))
+                        .trim(from: 0.5, to: 1.0)
+                        .fill(calColor)
                         .frame(width: 18, height: 18)
-                        .scaleEffect(isCompleting ? 1.0 : 1.0)
+                        .rotationEffect(.degrees(180))
+                        .transition(.scale.combined(with: .opacity))
+                case .completed:
+                    Circle()
+                        .fill(calColor)
+                        .frame(width: 18, height: 18)
                         .transition(.scale.combined(with: .opacity))
                     Image(systemName: "checkmark")
                         .font(.system(size: 9, weight: .bold))
@@ -133,19 +167,15 @@ struct ReminderRow: View {
 
     private var checkboxHelp: String {
         if isCompleting { return "完了をキャンセル" }
-        return reminder.isCompleted ? "未完了に戻す" : "完了にする"
+        switch progressState {
+        case .notStarted: return "進行中にする"
+        case .inProgress: return "完了にする"
+        case .completed: return "未着手に戻す"
+        }
     }
 
     private func handleCheckboxTap() {
-        // If already completed → uncomplete immediately
-        if reminder.isCompleted {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
-                store.toggleCompleted(reminder)
-            }
-            return
-        }
-
-        // If a completion is pending → cancel it
+        // 完了の最中なら、その確定をキャンセル
         if isCompleting {
             completionTask?.cancel()
             completionTask = nil
@@ -155,21 +185,33 @@ struct ReminderRow: View {
             return
         }
 
-        // Start completion sequence: show checkmark, dim row, then commit after a beat
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-            isCompleting = true
-            isExpanded = false
-        }
-
-        let task = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 750_000_000)
-            guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 0.25)) {
-                store.toggleCompleted(reminder)
-                isCompleting = false
+        switch store.progressState(of: reminder) {
+        case .notStarted:
+            // 未着手 → 進行中（即時）
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                store.setProgressState(.inProgress, for: reminder)
+            }
+        case .inProgress:
+            // 進行中 → 完了（750ms の確定アニメーション付き）
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                isCompleting = true
+                isExpanded = false
+            }
+            let task = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 750_000_000)
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeOut(duration: 0.25)) {
+                    store.setProgressState(.completed, for: reminder)
+                    isCompleting = false
+                }
+            }
+            completionTask = task
+        case .completed:
+            // 完了 → 未着手（即時）
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                store.setProgressState(.notStarted, for: reminder)
             }
         }
-        completionTask = task
     }
 
     // MARK: - Title
@@ -212,6 +254,9 @@ struct ReminderRow: View {
 
     private var metaRow: some View {
         HStack(spacing: 8) {
+            if progressState == .inProgress {
+                MetaItem(systemName: "circle.lefthalf.filled", text: "進行中", color: MRTheme.accent)
+            }
             if let dueLabel = store.dueLabel(for: reminder) {
                 let isToday = dueLabel.hasPrefix("今日") && !reminder.isCompleted
                 MetaItem(
@@ -223,7 +268,7 @@ struct ReminderRow: View {
             if let priority = store.priorityLabel(for: reminder) {
                 MetaItem(systemName: "exclamationmark.circle.fill", text: priority, color: store.priorityColor(for: reminder))
             }
-            ForEach(store.tags(for: reminder), id: \.self) { tag in
+            ForEach(store.displayTags(for: reminder), id: \.self) { tag in
                 MetaItem(systemName: "number", text: tag, color: MRTheme.accent)
             }
         }
@@ -254,9 +299,87 @@ struct ReminderRow: View {
             tagField
             urlField
             actionRow
+            if indentLevel == 0 {
+                subtaskSection
+            }
         }
         .padding(.top, 4)
         .padding(.leading, 29)
+    }
+
+    @ViewBuilder
+    private var subtaskSection: some View {
+        if isAddingSubtask {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.turn.down.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(MRTheme.accent)
+                TextField("サブタスクを追加", text: $newSubtaskText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Color.primaryText)
+                    .focused($subtaskFocused)
+                    .disabled(subtaskInFlight)
+                    .onSubmit { commitNewSubtask() }
+                    .onExitCommand { cancelSubtaskAdd() }
+                if subtaskInFlight {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+        } else {
+            Button {
+                beginSubtaskAdd()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 9, weight: .bold))
+                    Text("サブタスクを追加")
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .foregroundStyle(Color.secondaryText)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Color.white.opacity(0.85), in: Capsule())
+                .overlay(Capsule().stroke(Color.black.opacity(0.08), lineWidth: 0.5))
+            }
+            .buttonStyle(.plain)
+            .help("このタスクの下にサブタスクを追加")
+        }
+    }
+
+    private func beginSubtaskAdd() {
+        newSubtaskText = ""
+        withAnimation(.easeOut(duration: 0.15)) {
+            isAddingSubtask = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+            subtaskFocused = true
+        }
+    }
+
+    private func cancelSubtaskAdd() {
+        withAnimation { isAddingSubtask = false }
+        subtaskFocused = false
+        newSubtaskText = ""
+    }
+
+    private func commitNewSubtask() {
+        let title = newSubtaskText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty, !subtaskInFlight else { return }
+        subtaskInFlight = true
+        Task { @MainActor in
+            do {
+                try await store.addSubtask(under: reminder, title: title)
+                newSubtaskText = ""
+                subtaskInFlight = false
+                subtaskFocused = true
+            } catch {
+                store.lastError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                subtaskInFlight = false
+                subtaskFocused = true
+            }
+        }
     }
 
     private var urlField: some View {

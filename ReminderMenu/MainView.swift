@@ -394,6 +394,34 @@ struct MainView: View {
         .padding(.bottom, 10)
     }
 
+    /// グループ内のリマインダーを「親 → 子」の順に並べ、各要素にインデント深さを付与する。
+    /// 親が同じグループに居ない子は depth=0 でフォールバック表示する。
+    private func buildReminderTree(_ items: [EKReminder]) -> [ReminderTreeNode] {
+        let allIDs = Set(items.map(\.calendarItemIdentifier))
+        let parentMap = store.parentMap
+
+        // childMap: parent identifier -> [child reminder]
+        var childrenByParent: [String: [EKReminder]] = [:]
+        var topLevel: [EKReminder] = []
+        for item in items {
+            if let parentID = parentMap[item.calendarItemIdentifier], allIDs.contains(parentID) {
+                childrenByParent[parentID, default: []].append(item)
+            } else {
+                topLevel.append(item)
+            }
+        }
+
+        var nodes: [ReminderTreeNode] = []
+        nodes.reserveCapacity(items.count)
+        for parent in topLevel {
+            nodes.append(ReminderTreeNode(reminder: parent, depth: 0))
+            for child in childrenByParent[parent.calendarItemIdentifier] ?? [] {
+                nodes.append(ReminderTreeNode(reminder: child, depth: 1))
+            }
+        }
+        return nodes
+    }
+
     private var reminderList: some View {
         Group {
             if !store.hasFullAccess {
@@ -421,8 +449,8 @@ struct MainView: View {
                                 .padding(.bottom, 2)
                             }
 
-                            ForEach(group.reminders, id: \.calendarItemIdentifier) { reminder in
-                                ReminderRow(reminder: reminder)
+                            ForEach(buildReminderTree(group.reminders), id: \.id) { node in
+                                ReminderRow(reminder: node.reminder, indentLevel: node.depth)
                                     .padding(.horizontal, 8)
                                     .transition(
                                         .asymmetric(

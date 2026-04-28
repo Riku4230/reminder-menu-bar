@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum AppearanceMode: String, CaseIterable, Identifiable {
@@ -47,6 +48,10 @@ final class AppCoordinator: ObservableObject {
     @Published var quickAddShouldOpenOptions = false
     @Published var requestedPopoverHeight: CGFloat = 540
 
+    /// サブタスク追加用の Shortcut が Shortcuts.app にインストール済みか。
+    /// 初回起動時に CLI で確認し、未導入なら設定パネル等から導線を出す。
+    @Published var subtaskShortcutInstalled: Bool = false
+
     var showPopover: (() -> Void)?
 
     private var toastTask: Task<Void, Never>?
@@ -55,6 +60,46 @@ final class AppCoordinator: ObservableObject {
     init() {
         let raw = UserDefaults.standard.string(forKey: Self.appearanceKey) ?? AppearanceMode.system.rawValue
         appearance = AppearanceMode(rawValue: raw) ?? .system
+        subtaskShortcutInstalled = ShortcutsBridge.isInstalled()
+    }
+
+    /// Shortcuts.app の取り込みダイアログを起動。完了後しばらくしてから状態を再チェックする。
+    func installSubtaskShortcut() {
+        let opened = ShortcutsBridge.openInstaller()
+        if !opened {
+            showToast(
+                ToastMessage(
+                    kind: .failure,
+                    title: "ショートカットを開けませんでした",
+                    detail: "アプリに同梱された AddSubReminder.shortcut が見つかりません"
+                )
+            )
+            return
+        }
+        // ユーザーが取り込みを完了するのを待つために少し遅延させて再チェック
+        Task { @MainActor in
+            for _ in 0..<10 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if ShortcutsBridge.isInstalled() {
+                    self.subtaskShortcutInstalled = true
+                    self.showToast(
+                        ToastMessage(
+                            kind: .success,
+                            title: "サブタスク機能を有効化しました",
+                            detail: nil
+                        )
+                    )
+                    return
+                }
+            }
+        }
+    }
+
+    /// FDA 設定パネルを開く（サブタスク階層表示の許可導線）
+    func openFullDiskAccessSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     func showQuickAdd(openOptions: Bool = true) {

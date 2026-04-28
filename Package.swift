@@ -18,7 +18,8 @@ let package = Package(
                 .linkedFramework("AppKit"),
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("EventKit"),
-                .linkedFramework("Carbon")
+                .linkedFramework("Carbon"),
+                .linkedLibrary("sqlite3")
             ]
         )
     ],

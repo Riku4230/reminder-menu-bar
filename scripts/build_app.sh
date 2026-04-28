@@ -17,6 +17,11 @@ cp ".build/$CONFIG/$APP_NAME" "$APP_DIR/Contents/MacOS/$APP_NAME"
 cp "$ROOT_DIR/Info.plist" "$APP_DIR/Contents/Info.plist"
 chmod +x "$APP_DIR/Contents/MacOS/$APP_NAME"
 
+# サブタスク用ショートカットなどのバンドルリソースをコピー
+if [[ -d "$ROOT_DIR/Resources" ]]; then
+  cp -R "$ROOT_DIR/Resources/." "$APP_DIR/Contents/Resources/"
+fi
+
 if command -v codesign >/dev/null 2>&1; then
   codesign --force --deep --sign - "$APP_DIR" >/dev/null
 fi
