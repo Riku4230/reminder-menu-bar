@@ -905,6 +905,10 @@ struct ModernCalendar: View {
         let calendar: Calendar
         let onTap: () -> Void
 
+        private var isHoliday: Bool {
+            JapaneseHolidays.name(for: day.date) != nil
+        }
+
         var body: some View {
             Button(action: onTap) {
                 Text("\(calendar.component(.day, from: day.date))")
@@ -920,6 +924,7 @@ struct ModernCalendar: View {
                             }
                         }
                     )
+                    .help(JapaneseHolidays.name(for: day.date) ?? "")
             }
             .buttonStyle(.plain)
         }
@@ -928,7 +933,9 @@ struct ModernCalendar: View {
             if isSelected { return .white }
             if !day.isInMonth { return Color.tertiaryText.opacity(0.45) }
             if day.isToday { return MRTheme.accent }
-            if day.weekday == 1 { return Color(red: 0.86, green: 0.36, blue: 0.36) }
+            if day.weekday == 1 || isHoliday {
+                return Color(red: 0.86, green: 0.36, blue: 0.36)
+            }
             if day.weekday == 7 { return Color(red: 0.36, green: 0.56, blue: 0.86) }
             return Color.primaryText
         }
