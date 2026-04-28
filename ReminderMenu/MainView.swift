@@ -291,6 +291,13 @@ struct MainView: View {
             ),
             presenting: updateChecker.availableUpdate
         ) { update in
+            // ソースビルド済みの人にはワンクリック更新ボタンを優先表示
+            if SourceUpdater.savedSourceDir != nil {
+                Button("ターミナルでアップデート") {
+                    let ok = SourceUpdater.runUpdate()
+                    if ok { updateChecker.snooze(update.latestVersion) }
+                }
+            }
             Button("ダウンロードページを開く") {
                 NSWorkspace.shared.open(update.releaseURL)
                 updateChecker.snooze(update.latestVersion)
@@ -1366,16 +1373,49 @@ struct MainView: View {
 
                 ModernMenuDivider()
 
-                // About / バージョン情報
-                ModernMenuRow(
-                    icon: "info.circle",
-                    label: "Hutch v\(Bundle.main.shortVersion) · GitHub"
-                ) {
-                    showMoreMenu = false
-                    if let url = URL(string: "https://github.com/Riku4230/Hutch") {
-                        NSWorkspace.shared.open(url)
+                // ソースビルド向けの自動アップデート（最新版がある時だけ有効）
+                if updateChecker.availableUpdate != nil {
+                    ModernMenuRow(
+                        icon: "arrow.down.circle.fill",
+                        iconColor: MRTheme.accent,
+                        label: SourceUpdater.savedSourceDir == nil
+                            ? "ソースからアップデート…"
+                            : "ソースからアップデート"
+                    ) {
+                        showMoreMenu = false
+                        let ok = SourceUpdater.runUpdate()
+                        if ok, let v = updateChecker.availableUpdate?.latestVersion {
+                            updateChecker.snooze(v)
+                            app.showToast(ToastMessage(
+                                kind: .info,
+                                title: "ターミナルで update.sh を実行中",
+                                detail: "進捗はターミナル.app で確認してください"
+                            ))
+                        }
                     }
+                } else {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Color.tertiaryText)
+                            .frame(width: 14, alignment: .leading)
+                        Text("最新版です")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(Color.tertiaryText)
+                        Spacer(minLength: 10)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+
+                // About / バージョン表示（クリック不可・情報のみ）
+                Text("Hutch v\(Bundle.main.shortVersion)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.tertiaryText)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
             }
         }
         .frame(width: 260)
