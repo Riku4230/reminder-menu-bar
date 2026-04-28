@@ -325,20 +325,23 @@ struct MainView: View {
 
             Spacer()
 
-            Button {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
-                    listViewMode = listViewMode.toggled()
+            // カレンダービューはスマートリスト「すべて」でのみ提供
+            if store.selectedSmartList == .all {
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                        listViewMode = listViewMode.toggled()
+                    }
+                } label: {
+                    Image(systemName: listViewMode.toggled().systemImage)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(listViewMode == .calendar ? MRTheme.accent : Color.secondaryText)
+                        .frame(width: 26, height: 26)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 0.5))
                 }
-            } label: {
-                Image(systemName: listViewMode.toggled().systemImage)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(listViewMode == .calendar ? MRTheme.accent : Color.secondaryText)
-                    .frame(width: 26, height: 26)
-                    .background(.ultraThinMaterial, in: Circle())
-                    .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 0.5))
+                .buttonStyle(.plain)
+                .help(listViewMode.help)
             }
-            .buttonStyle(.plain)
-            .help(listViewMode.help)
 
             Button {
                 store.showCompleted.toggle()
@@ -434,6 +437,11 @@ struct MainView: View {
         .padding(.bottom, 10)
     }
 
+    /// カレンダー表示は「すべて」スマートリスト + ユーザーが切替モード ON のときだけ有効
+    private var showCalendar: Bool {
+        listViewMode == .calendar && store.selectedSmartList == .all
+    }
+
     /// グループ内のリマインダーを「親 → 子」の順に並べ、各要素にインデント深さを付与する。
     /// 親が同じグループに居ない子は depth=0 でフォールバック表示する。
     private func buildReminderTree(_ items: [EKReminder]) -> [ReminderTreeNode] {
@@ -466,9 +474,9 @@ struct MainView: View {
         Group {
             if !store.hasFullAccess {
                 permissionView
-            } else if store.filteredReminders.isEmpty && listViewMode == .list {
+            } else if store.filteredReminders.isEmpty && !showCalendar {
                 emptyView
-            } else if listViewMode == .calendar {
+            } else if showCalendar {
                 CalendarView(reminders: store.filteredReminders)
                     .environmentObject(store)
             } else {
