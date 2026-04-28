@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let appCoordinator = AppCoordinator()
     private let hotKeyManager = GlobalHotKeyManager()
     private let aiSettings = AISettings()
+    private let updateChecker = UpdateChecker()
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -73,6 +74,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         if !popover.isShown {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
+            // popover を開いた瞬間に 1 日 1 回だけ最新版チェック
+            Task { @MainActor in
+                await self.updateChecker.checkIfNeeded()
+            }
         }
     }
 
@@ -137,6 +142,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 .environmentObject(appCoordinator)
                 .environmentObject(hotKeyManager)
                 .environmentObject(aiSettings)
+                .environmentObject(updateChecker)
         )
         // SwiftUI 側のクリップ（22px）と NSPopover のフレームが重なる際に
         // 角の隙間から NSPopover 地が見える問題を防ぐため、ホスト View も

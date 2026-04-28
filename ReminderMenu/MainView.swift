@@ -106,6 +106,7 @@ struct MainView: View {
     @EnvironmentObject private var app: AppCoordinator
     @EnvironmentObject private var hotKeys: GlobalHotKeyManager
     @EnvironmentObject private var aiSettings: AISettings
+    @EnvironmentObject private var updateChecker: UpdateChecker
 
     @FocusState private var inputFocused: Bool
 
@@ -155,6 +156,12 @@ struct MainView: View {
     }
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    /// 直前に起動した時のバージョン。新版にアップデート後の初回起動を検出するために使う。
+    @AppStorage("lastSeenVersion") private var lastSeenVersion: String = ""
+
+    /// What's new シートの表示状態
+    @State private var showWhatsNew = false
+    @State private var pendingReleaseNotes: UpdateChecker.ReleaseNotes?
 
     var body: some View {
         Group {
@@ -231,6 +238,8 @@ struct MainView: View {
             app.requestedPopoverHeight = popoverHeight
             fnDoubleTap.onDoubleTap = { toggleInputMode() }
             fnDoubleTap.start()
+            // 新版にアップデート後の初回起動なら What's new シートを開く
+            checkForUpdatedVersion()
         }
         .onDisappear { fnDoubleTap.stop() }
         .background(
@@ -277,6 +286,62 @@ struct MainView: View {
                 .environmentObject(store)
                 .environmentObject(app)
                 .preferredColorScheme(app.appearance.colorScheme)
+        }
+        .alert(
+            "新しいバージョンが利用可能です",
+            isPresented: Binding(
+                get: { updateChecker.availableUpdate != nil },
+                set: { if !$0 { updateChecker.availableUpdate = nil } }
+            ),
+            presenting: updateChecker.availableUpdate
+        ) { update in
+            Button("ダウンロードページを開く") {
+                NSWorkspace.shared.open(update.releaseURL)
+                updateChecker.snooze(update.latestVersion)
+            }
+            Button("あとで") {
+                updateChecker.snooze(update.latestVersion)
+            }
+        } message: { update in
+            Text("Hutch v\(update.latestVersion) が利用可能です。\n現在のバージョン: v\(Bundle.main.shortVersion)")
+        }
+        .sheet(isPresented: $showWhatsNew) {
+            if let notes = pendingReleaseNotes {
+                WhatsNewView(notes: notes) {
+                    showWhatsNew = false
+                    pendingReleaseNotes = nil
+                    lastSeenVersion = Bundle.main.shortVersion
+                }
+                .preferredColorScheme(app.appearance.colorScheme)
+            }
+        }
+    }
+
+    /// 新版にアップデートして初回起動した場合、リリースノートを取りに行ってシート表示。
+    /// `lastSeenVersion` が空（初インストール）or 古いバージョンの時に発火。
+    private func checkForUpdatedVersion() {
+        let current = Bundle.main.shortVersion
+        // 初インストール時はノートを出さず、現在版を記録するだけ
+        if lastSeenVersion.isEmpty {
+            lastSeenVersion = current
+            return
+        }
+        // 同じバージョンなら何もしない
+        guard lastSeenVersion != current else { return }
+        // 現在版 > lastSeen の時だけ表示（ダウングレードは無視）
+        guard current.isVersionGreater(than: lastSeenVersion) else {
+            lastSeenVersion = current
+            return
+        }
+        Task { @MainActor in
+            let notes = await updateChecker.fetchReleaseNotes(for: current)
+            // GitHub にまだリリースが出ていない場合（手元 dev ビルドなど）は静かにスキップ
+            if let notes {
+                pendingReleaseNotes = notes
+                showWhatsNew = true
+            } else {
+                lastSeenVersion = current
+            }
         }
     }
 
@@ -1255,6 +1320,19 @@ struct MainView: View {
                 ModernMenuRow(icon: "arrow.up.forward.app", label: "リマインダーアプリを開く") {
                     showMoreMenu = false
                     store.openRemindersApp()
+                }
+
+                ModernMenuDivider()
+
+                // About / バージョン情報
+                ModernMenuRow(
+                    icon: "info.circle",
+                    label: "Hutch v\(Bundle.main.shortVersion) · GitHub"
+                ) {
+                    showMoreMenu = false
+                    if let url = URL(string: "https://github.com/Riku4230/Hutch") {
+                        NSWorkspace.shared.open(url)
+                    }
                 }
             }
         }
