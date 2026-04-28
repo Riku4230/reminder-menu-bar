@@ -182,6 +182,7 @@ struct CalendarView: View {
         }
     }
 
+    @MainActor
     private struct DayCell: View {
         let day: DayInfo
         let isSelected: Bool
@@ -249,7 +250,6 @@ struct CalendarView: View {
             .opacity(day.isInMonth ? 1 : 0.4)
         }
 
-        @MainActor
         private func dotColor(for reminder: EKReminder) -> Color {
             store.color(for: reminder.calendar)
         }
