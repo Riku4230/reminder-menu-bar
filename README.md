@@ -1,96 +1,183 @@
-# ReminderMenu
+# Nudge
 
-macOS メニューバー常駐の Apple リマインダー連携アプリです。EventKit で純正リマインダーを読み書きし、iCloud 経由で iPhone/iPad/Mac と同期します。
+> macOS のメニューバーから純正 Apple リマインダーをすばやく操作する、AI 搭載の常駐アプリ。
 
-## ビルド
+EventKit で純正リマインダーを読み書きするので、書いたタスクは iCloud 経由で iPhone / iPad / Mac の純正アプリにそのまま同期されます。Nudge を消しても、データは純正リマインダー.app に残ります。
+
+## 特徴
+
+- **メニューバー常駐 / Dock 非表示** — `Fn` ダブルタップ or 任意のグローバルショートカットで開閉
+- **Glass Float デザイン** — ライト / ダーク / システム追従の外観切替
+- **3 状態チェックボックス** — 未着手 / 進行中 / 完了（進行中は `#wip` タグで iCloud 同期）
+- **サブタスクの追加・階層表示** — Shortcuts.app + SQLite 直読で純正アプリと同じ親子関係を扱える
+- **AI モード（マルチプロバイダー対応）** — Claude Code CLI / Anthropic API / OpenAI / Gemini から選択可能
+  - 自然言語からのリマインダー追加（「明日 15 時に歯医者 https://...」→ 期日 / メモ / URL を抽出）
+  - 親タスクをサブタスクに自動分解（`✨ AIで生成` ボタン）
+- **カレンダービュー** — 月グリッドにリマインダーをリスト色のドットで表示、日本の祝日に対応
+- **スマートリスト** — 今日 / 予定 / すべて / フラグあり
+- **iCloud 共有リスト対応** — 純正アプリで作ったリストはそのまま使える
+
+## インストール
+
+### ビルド
+
+要件: macOS 14 以降、Swift 5.9 以降、Xcode コマンドラインツール。
 
 ```bash
-./scripts/build_app.sh
-```
-
-生成先:
-
-```text
-build/ReminderMenu.app
-```
-
-要件どおり `~/Applications` に配置する場合:
-
-```bash
+git clone https://github.com/Riku4230/Nudge.git
+cd Nudge
 ./scripts/build_app.sh --install
 ```
 
-## 起動
+`~/Applications/Nudge.app` にインストールされるので、`open ~/Applications/Nudge.app` か Spotlight で起動してください。
 
-```bash
-open ~/Applications/ReminderMenu.app
-```
+`--install` を付けない場合は `build/Nudge.app` に生成されます。
 
-初回起動時にリマインダーへのフルアクセス許可が必要です。
+### 初回起動時
 
-## 実装済み
-
-- メニューバー常駐、Dock 非表示、transient ポップオーバー
-- Glass Float デザインの SwiftUI 実装
-- ライト/ダーク/システム追従の外観切替
-- 今日 / 予定 / すべて / 重要のスマートリスト
-- iCloud/ローカルのユーザーリスト表示、新規リスト作成
-- 検索、期限順/優先度順/タイトル順ソート
-- リマインダー追加、編集、削除、完了/未完了
-- 完了済み表示切替、完了済み一括削除
-- 任意のグローバルショートカット登録
-- AI モード: `claude -p` JSON パース、失敗時はローカル日本語パーサーへフォールバック
-- AI/通常追加後の「追加しました」トースト表示
-- サブタスクの追加（Shortcuts.app 経由）と階層表示（SQLite 直接読み）
-- 進行中ステータス（`#wip` タグ流用、3 状態チェックボックス）
+1. **リマインダーへのフルアクセス** — ダイアログが出るので「許可」
+2. **サブタスク機能** — メニュー右上の「⋯」から有効化（任意、後述）
+3. **AI モード** — 同じく「⋯」→ AI 設定でプロバイダーと API キーを設定（任意）
 
 ## サブタスク機能のセットアップ
 
-EventKit にはサブタスク用の API が無いため、本アプリは Shortcuts.app の「リマインダーを追加」アクションを経由してサブタスクを書き込みます。1 度だけ Mac でショートカットを準備してください。
+EventKit にはサブタスクの公開 API が無いため、Nudge は Shortcuts.app の「リマインダーを追加」アクション経由でサブタスクを書き込みます。アプリにバンドルされたショートカットを 1 度だけ取り込んでください。
 
-### 1. Shortcuts.app でショートカットを作成
+### 1. ショートカットを取り込む
 
-Shortcuts.app を開き、新規ショートカットに以下のアクションを順に追加：
+`~/Applications/Nudge.app/Contents/Resources/AddSubReminder.shortcut` をダブルクリックすると Shortcuts.app の取り込みダイアログが開きます。**「ショートカットを追加」** を選択してください。
 
-1. **入力を受け取る** — タイプ「指定なし」、入力がない場合「続ける」
-2. **辞書の値を取得**: ショートカットの入力 / キー `parentTitle`
-3. **辞書の値を取得**: ショートカットの入力 / キー `title`
-4. **辞書の値を取得**: ショートカットの入力 / キー `listName`
-5. **リマインダーを検索**: フィルタを 3 つ追加
-   - 「タイトル が次と等しい _parentTitle の辞書の値_」
-   - 「リスト が次と等しい _listName の辞書の値_」
-   - 「完了済みではない」（完了済みの同名タスクを除外）
-   - 並び順序: なし、制限: 1 件
-6. **新規リマインダー**: タイトル _title の辞書の値_、リスト _listName の辞書の値_、**親項目** に 5 の結果（リマインダー）を指定
+> アプリ内からも「⋯ → サブタスクを有効化」で同じファイルを開けます。
 
-> macOS Shortcuts の「リマインダーを検索」アクションには ID フィルタが無いため、親はタイトル + リストで特定します。同一リスト内に**未完了の同名リマインダー**が複数あると誤った親に紐づくので、Nudge 側で `addSubtask` 呼び出し時に未然にエラーを返します（`ReminderStore.swift`）。
+ショートカットの名前は **`ReminderMenu Add Subtask`** のまま変更しないでください（Nudge から CLI で呼び出すための識別子です）。
 
-ショートカット名は **`ReminderMenu Add Subtask`** にしてください。
+### 2. 階層表示（読み取り）の権限
 
-### 2. `.shortcut` ファイルとして書き出す
-
-ショートカットを右クリック → 共有 → ファイルとして保存 → プロジェクトの `Resources/AddSubReminder.shortcut` に保存。
-
-`./scripts/build_app.sh` でビルドすると、このファイルが `ReminderMenu.app/Contents/Resources/` に同梱され、配布用バンドルから取り込めるようになります。
-
-### 3. 階層表示（読み取り）に必要な権限
-
-サブタスクの**追加**は上記だけで動きますが、**階層表示**（メニュー内で親 → 子をインデント表示）には純正リマインダー.app の SQLite を読む必要があり、**フルディスクアクセス**の許可が必要です：
+サブタスクの**追加**は上記だけで動きますが、**階層表示**（メニュー内で親 → 子をインデント表示）には純正リマインダー.app の SQLite を読む必要があり、**フルディスクアクセス** の許可が必要です：
 
 ```
-システム設定 → プライバシーとセキュリティ → フルディスクアクセス → ReminderMenu を ON
+システム設定 → プライバシーとセキュリティ → フルディスクアクセス → Nudge を ON
 ```
 
-未許可の場合はサブタスクもフラットなリマインダーとして表示されますが、純正アプリ・iPhone では正しく階層表示されます。
+未許可でもサブタスク自体は動作します。Nudge 内ではフラットに表示されますが、純正アプリ・iPhone では正しく階層表示されます。
+
+### 制限事項
+
+- macOS Shortcuts の「リマインダーを検索」アクションは ID フィルタを持たないため、親はタイトル + リストで特定します
+- 同一リスト内に未完了の同名リマインダーが複数あると、Nudge 側で `addSubtask` 呼び出し時にエラーを返します（誤った親への紐付けを防ぐため）
+- 階層は 1 段のみ対応（純正アプリの UI と同じ仕様）
+
+## AI モード
+
+メニュー下部の入力欄で「AI」モードを選択すると自然言語入力が解釈されます。
+
+| 入力例 | 解釈結果 |
+|---|---|
+| `明日 15 時に歯医者` | タイトル「歯医者」、明日 15:00 |
+| `今週金曜までに資料作る` | タイトル「資料作る」、今週金曜 |
+| `https://example.com の記事を読む` | タイトル「記事を読む」、URL セット |
+| `家事リストに洗濯と掃除を追加` | 2 件（洗濯 / 掃除）を「家事」リストへ |
+
+### プロバイダー設定
+
+「⋯ → AI 設定」から以下のいずれかを選択：
+
+| プロバイダー | 必要なもの |
+|---|---|
+| **Claude Code (CLI)** | `claude` コマンドが PATH に通っていること |
+| **Anthropic API** | `https://console.anthropic.com/` の API キー |
+| **OpenAI** | `https://platform.openai.com/` の API キー |
+| **Google Gemini** | `https://aistudio.google.com/` の API キー |
+
+API キーは Keychain (Generic Password) に保存されます。
+
+### サブタスク自動生成
+
+親タスクを展開して `✨ AIで生成` を押すと、AI が 3〜7 件のサブタスクを提案します。確認ポップオーバーで編集・削除・追加してから一括登録できます。
 
 ## 進行中ステータス
 
-チェックボックスは 3 状態をサイクルします：
+チェックボックスをタップすると 3 状態をサイクルします：
 
 | 状態 | 表示 | 内部表現 |
 |---|---|---|
-| 未着手 | ○（空の円） | `isCompleted = false`、`#wip` タグなし |
-| 進行中 | ◐（左半分塗り） | `isCompleted = false`、`#wip` タグあり |
-| 完了 | ✓（チェック） | `isCompleted = true` |
+| 未着手 | 空の円 | `isCompleted = false` / `#wip` なし |
+| 進行中 | アクセント色のスピナー | `isCompleted = false` / `#wip` タグあり |
+| 完了 | 塗りつぶし + チェック | `isCompleted = true` |
 
-`#wip` タグは純正リマインダー.app・iPhone でもタグとして見え、iCloud 同期されます。タグ名はソース上の `ReminderStore.progressTag` で変更可能です。
+`#wip` タグは純正リマインダー.app・iPhone でもタグとして見え、iCloud 同期されます。タグ名は `ReminderMenu/ReminderStore.swift` の `progressTag` 定数で変更可能です。
+
+## アーキテクチャ
+
+```
+┌──────────────────────────────────────────────┐
+│              Nudge.app                       │
+│  ┌──────────────────────────────────────┐    │
+│  │  SwiftUI View Layer                  │    │
+│  │  MainView / ReminderRow / Calendar   │    │
+│  └────────────┬─────────────────────────┘    │
+│               │                              │
+│  ┌────────────▼─────────────────────────┐    │
+│  │  ReminderStore (ObservableObject)    │    │
+│  └────┬──────────┬──────────┬───────────┘    │
+│       │          │          │                │
+│  ┌────▼───┐ ┌────▼─────┐ ┌──▼──────────┐     │
+│  │EventKit│ │Shortcuts │ │ SQLite      │     │
+│  │read/   │ │ CLI      │ │ read-only   │     │
+│  │write   │ │(subtask  │ │(parent map) │     │
+│  │        │ │ create)  │ │             │     │
+│  └────────┘ └──────────┘ └─────────────┘     │
+│                                              │
+│  ┌────────────────────────────────────┐      │
+│  │  AIProvider (Claude/OpenAI/Gemini) │      │
+│  └────────────────────────────────────┘      │
+└──────────────────────────────────────────────┘
+        │                │              │
+        ▼                ▼              ▼
+   iCloud Reminders  Shortcuts.app  ~/Library/.../Reminders
+```
+
+### 主要なファイル
+
+| ファイル | 役割 |
+|---|---|
+| `ReminderStore.swift` | EventKit の読み書き、進行中ステータス管理、サブタスク統合 |
+| `RemindersSQLite.swift` | 純正アプリの SQLite から親子マップを読む |
+| `ShortcutsBridge.swift` | `/usr/bin/shortcuts run` の Swift ラッパー |
+| `AIProvider.swift` | LLM プロバイダー抽象（Claude/OpenAI/Gemini を統一） |
+| `Providers/*.swift` | 各 LLM の実装 |
+| `NLParser.swift` | 自然言語 → ReminderDraft / サブタスク候補 |
+| `Holidays.swift` | 日本の祝日をルールベース計算 |
+| `MainView.swift` | メニューバーポップオーバーのトップビュー |
+| `ReminderRow.swift` | 個別リマインダー行（編集 UI 付き） |
+| `CalendarView.swift` | 月カレンダービュー |
+
+## なぜ作ったか
+
+純正リマインダーは iCloud 同期や iOS との連携が強いが、Mac での「サクッと開いて書き込んで閉じる」が弱い。Things や OmniFocus は別データストアで、結局純正アプリに残っているタスクと混ざらない。
+
+Nudge は **純正のデータをそのまま使いつつ**、Mac で快適にタスクを足せる UI を被せる、という路線で作っています。
+
+## 開発
+
+```bash
+# デバッグビルド
+swift build
+
+# 実機で動かす（リリースビルド + ~/Applications にインストール）
+./scripts/build_app.sh --install
+
+# 起動中のプロセスを kill して再起動
+pkill -f Nudge.app && open ~/Applications/Nudge.app
+```
+
+依存ライブラリ無し（SwiftPM だけ、SQLite3 はシステム）。Swift Package Manager のみでビルドできます。
+
+## ライセンス
+
+MIT License — 自由に fork / 改変してください。
+
+## クレジット
+
+- アイコン: `Resources/AppIcon.icns`
+- 自然言語解釈: Anthropic Claude / OpenAI GPT / Google Gemini
