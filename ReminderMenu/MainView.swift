@@ -112,6 +112,7 @@ struct MainView: View {
     @State private var showListDropdown = false
     @State private var showMoreMenu = false
     @State private var showAISettings = false
+    @State private var showAIProviderMenu = false
     @State private var inputMode: InputMode = .normal
     @State private var listViewMode: ListViewMode = .list
     @StateObject private var fnDoubleTap = FnDoubleTapMonitor()
@@ -148,7 +149,7 @@ struct MainView: View {
     }
 
     private var popoverHeight: CGFloat {
-        if showNewListSheet || showShortcutSheet { return 700 }
+        if showNewListSheet || showShortcutSheet || showListManagerSheet || showAISettings { return 700 }
         let base: CGFloat = 580
         return optionsOpen ? base + max(0, optionsPanelHeight) : base
     }
@@ -236,7 +237,6 @@ struct MainView: View {
         }
         .sheet(isPresented: $showNewListSheet) {
             newListSheet
-                .frame(width: 340)
                 .preferredColorScheme(app.appearance.colorScheme)
         }
         .sheet(isPresented: $showAISettings) {
@@ -246,14 +246,12 @@ struct MainView: View {
         }
         .sheet(isPresented: $showShortcutSheet) {
             shortcutSheet
-                .frame(width: 340)
                 .preferredColorScheme(app.appearance.colorScheme)
         }
         .sheet(isPresented: $showListManagerSheet) {
             ListManagerSheet()
                 .environmentObject(store)
                 .environmentObject(app)
-                .frame(width: 380)
                 .preferredColorScheme(app.appearance.colorScheme)
         }
     }
@@ -584,8 +582,7 @@ struct MainView: View {
             Button("アクセスを許可") {
                 store.requestAccessAndLoad()
             }
-            .buttonStyle(.borderedProminent)
-            .tint(MRTheme.accent)
+            .buttonStyle(.mr(.primary, size: .md))
         }
         .padding(24)
     }
@@ -604,36 +601,8 @@ struct MainView: View {
 
     private var aiToggleButton: some View {
         let isAI = inputMode == .ai
-        return Menu {
-            Button(isAI ? "通常モードに戻す" : "AI モードに切替") {
-                withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
-                    inputMode = isAI ? .normal : .ai
-                }
-            }
-            Divider()
-            Section("AI プロバイダ") {
-                ForEach(AIProviderID.allCases) { provider in
-                    Button {
-                        aiSettings.providerID = provider
-                        withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
-                            inputMode = .ai
-                        }
-                    } label: {
-                        HStack {
-                            Text(provider.displayName)
-                            if aiSettings.providerID == provider {
-                                Image(systemName: "checkmark")
-                            }
-                            if provider.requiresAPIKey && !aiSettings.hasAPIKey(provider) {
-                                Image(systemName: "exclamationmark.circle")
-                                    .foregroundStyle(.orange)
-                            }
-                        }
-                    }
-                }
-            }
-            Divider()
-            Button("AI 設定を開く…") { showAISettings = true }
+        return Button {
+            toggleInputMode()
         } label: {
             Image(systemName: "sparkles")
                 .font(.system(size: 14, weight: .semibold))
@@ -649,18 +618,59 @@ struct MainView: View {
                     )
                 )
                 .shadow(color: isAI ? MRTheme.accent.opacity(0.35) : .clear, radius: 6, y: 2)
-        } primaryAction: {
-            withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
-                inputMode = isAI ? .normal : .ai
-            }
         }
-        .menuStyle(.button)
         .buttonStyle(.plain)
-        .menuIndicator(.hidden)
         .fixedSize()
+        .onLongPressGesture(minimumDuration: 0.35) {
+            showAIProviderMenu = true
+        }
+        .popover(isPresented: $showAIProviderMenu, arrowEdge: .bottom) {
+            aiProviderMenu
+        }
         .help(isAI
               ? "AI モード（\(aiSettings.providerID.displayName)）— 長押しでプロバイダ切替"
               : "通常モード — 長押しで AI プロバイダ切替")
+    }
+
+    private var aiProviderMenu: some View {
+        ModernMenuSurface {
+            VStack(spacing: 1) {
+                ModernMenuTitle(label: "AI")
+                ModernMenuRow(
+                    icon: inputMode == .ai ? "textformat" : "sparkles",
+                    label: inputMode == .ai ? "通常モードに戻す" : "AI モードに切替"
+                ) {
+                    showAIProviderMenu = false
+                    toggleInputMode()
+                }
+
+                ModernMenuDivider()
+                ModernMenuSectionHeader(label: "プロバイダ")
+
+                ForEach(AIProviderID.allCases) { provider in
+                    ModernMenuRow(
+                        icon: provider.requiresAPIKey && !aiSettings.hasAPIKey(provider) ? "exclamationmark.circle" : nil,
+                        iconColor: provider.requiresAPIKey && !aiSettings.hasAPIKey(provider) ? MRTheme.yellow : .secondaryText,
+                        label: provider.displayName,
+                        trailingChecked: aiSettings.providerID == provider
+                    ) {
+                        aiSettings.providerID = provider
+                        showAIProviderMenu = false
+                        withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
+                            inputMode = .ai
+                        }
+                    }
+                }
+
+                ModernMenuDivider()
+                ModernMenuRow(icon: "sparkles", label: "AI 設定を開く") {
+                    showAIProviderMenu = false
+                    showAISettings = true
+                }
+            }
+        }
+        .frame(width: 230)
+        .padding(6)
     }
 
 
@@ -968,11 +978,22 @@ struct MainView: View {
                 }
             ))
 
-            Toggle("時刻を含める", isOn: $customIncludesTime.animation())
-                .font(.system(size: 10.5, weight: .semibold))
-                .toggleStyle(.switch)
-                .tint(MRTheme.accent)
-                .controlSize(.mini)
+            HStack(spacing: MRTheme.Space.sm) {
+                Text("時刻を含める")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(Color.primaryText)
+                Spacer()
+                MRModernSwitch(isOn: Binding(
+                    get: { customIncludesTime },
+                    set: { newValue in
+                        withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
+                            customIncludesTime = newValue
+                        }
+                    }
+                ))
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
 
             if customIncludesTime {
                 ModernTimePicker(date: $customDueDate)
@@ -981,9 +1002,7 @@ struct MainView: View {
             HStack {
                 Spacer()
                 Button("完了") { showInputDueMenu = false }
-                    .buttonStyle(.borderedProminent)
-                    .tint(MRTheme.accent)
-                    .controlSize(.mini)
+                    .buttonStyle(.mr(.primary, size: .xs))
                     .keyboardShortcut(.defaultAction)
             }
         }
@@ -1166,7 +1185,8 @@ struct MainView: View {
                 )
                 .padding(.bottom, 4)
 
-                ModernMenuRow(icon: "keyboard", label: "ショートカット設定") {
+                ModernMenuSectionHeader(label: "設定")
+                ModernMenuRow(icon: "keyboard", label: "ショートカット管理") {
                     showMoreMenu = false
                     showShortcutSheet = true
                 }
@@ -1192,104 +1212,136 @@ struct MainView: View {
     }
 
     private var newListSheet: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("新しいリスト")
-                .font(.system(size: 17, weight: .bold))
-
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(newListColor)
-                    .frame(width: 16, height: 16)
-                TextField("リスト名", text: $newListName)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 14))
-            }
-            .padding(12)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(MRTheme.accent.opacity(0.45), lineWidth: 1))
-
-            HStack(spacing: 10) {
-                ForEach(Array(MRTheme.listColors.enumerated()), id: \.offset) { index, color in
-                    Button {
-                        newListColorIndex = index
-                    } label: {
+        MRSettingsSurface(
+            title: "新規リスト",
+            subtitle: "リスト名と色を指定して作成します。",
+            size: .dialog,
+            onClose: { showNewListSheet = false }
+        ) {
+            VStack(alignment: .leading, spacing: MRTheme.Space.xl) {
+                MRCard(selected: true, padding: MRTheme.Space.lg) {
+                    HStack(spacing: MRTheme.Space.md) {
                         Circle()
-                            .fill(color)
-                            .frame(width: 26, height: 26)
-                            .overlay(Circle().stroke(.primary.opacity(newListColorIndex == index ? 0.8 : 0), lineWidth: 2))
+                            .fill(newListColor)
+                            .frame(width: 16, height: 16)
+                        MRStyledTextField {
+                            TextField("リスト名", text: $newListName)
+                                .onSubmit { createNewList() }
+                        }
                     }
-                    .buttonStyle(.plain)
+                }
+
+                VStack(alignment: .leading, spacing: MRTheme.Space.md) {
+                    MRSectionHeader(title: "色")
+                    HStack(spacing: MRTheme.Space.sm) {
+                        ForEach(Array(MRTheme.listColors.enumerated()), id: \.offset) { index, color in
+                            Button {
+                                newListColorIndex = index
+                            } label: {
+                                Circle()
+                                    .fill(color)
+                                    .frame(width: 26, height: 26)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.primary.opacity(newListColorIndex == index ? 0.75 : 0), lineWidth: 2)
+                                    )
+                                    .overlay(
+                                        Circle()
+                                            .stroke(MRTheme.Border.line, lineWidth: 0.5)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
             }
-
-            HStack(spacing: 8) {
-                Button("作成") {
-                    do {
-                        let id = try store.createList(name: newListName, color: newListColor)
-                        store.selection = .calendar(id)
-                        selectedCalendarID = id
-                        app.showToast(ToastMessage(kind: .success, title: "リストを作成しました", detail: newListName))
-                        newListName = ""
-                        showNewListSheet = false
-                    } catch {
-                        app.showToast(ToastMessage(kind: .failure, title: "リストを作成できませんでした", detail: error.localizedDescription))
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(MRTheme.accent)
-                .disabled(newListName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
+        } footer: {
+            HStack(spacing: MRTheme.Space.md) {
                 Button("キャンセル") {
                     showNewListSheet = false
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.mr(.secondary, size: .sm))
+
+                Spacer()
+
+                Button("作成") {
+                    createNewList()
+                }
+                .buttonStyle(.mr(.primary, size: .sm))
+                .keyboardShortcut(.defaultAction)
+                .disabled(newListName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
-        .padding(20)
     }
 
     private var shortcutSheet: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("ショートカット")
-                .font(.system(size: 17, weight: .bold))
-            Text("現在: \(hotKeys.shortcut.displayText)")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Color.secondaryText)
+        MRSettingsSurface(
+            title: "ショートカット管理",
+            subtitle: "メニューを開くグローバルショートカットを変更します。",
+            size: .dialog,
+            onClose: { showShortcutSheet = false }
+        ) {
+            VStack(alignment: .leading, spacing: MRTheme.Space.xl) {
+                MRInfoBanner(
+                    systemImage: "keyboard",
+                    text: "現在: \(hotKeys.shortcut.displayText)",
+                    tint: MRTheme.accent
+                )
 
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(MRTheme.accent.opacity(0.45), lineWidth: 1))
-                VStack(spacing: 8) {
-                    Image(systemName: "keyboard")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(MRTheme.accent)
-                    Text("登録したいキーを押す")
-                        .font(.system(size: 13, weight: .semibold))
+                ZStack {
+                    RoundedRectangle(cornerRadius: MRTheme.Radius.xl, style: .continuous)
+                        .fill(MRTheme.Surface.field)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MRTheme.Radius.xl, style: .continuous)
+                                .stroke(MRTheme.Border.accent, lineWidth: 1)
+                        )
+                    VStack(spacing: MRTheme.Space.md) {
+                        Image(systemName: "keyboard")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(MRTheme.accent)
+                        Text("登録したいキーを押す")
+                            .font(.system(size: MRTheme.FontSize.label, weight: .semibold))
+                            .foregroundStyle(Color.primaryText)
+                    }
+                    ShortcutRecorder { shortcut in
+                        hotKeys.updateShortcut(shortcut)
+                        app.showToast(ToastMessage(kind: .success, title: "ショートカットを登録しました", detail: shortcut.displayText))
+                    }
                 }
-                ShortcutRecorder { shortcut in
-                    hotKeys.updateShortcut(shortcut)
-                    app.showToast(ToastMessage(kind: .success, title: "ショートカットを登録しました", detail: shortcut.displayText))
-                }
+                .frame(height: 140)
             }
-            .frame(height: 120)
-
-            HStack {
+        } footer: {
+            HStack(spacing: MRTheme.Space.md) {
                 Button("デフォルトに戻す") {
                     hotKeys.updateShortcut(.defaultShortcut)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.mr(.secondary, size: .sm))
 
                 Spacer()
 
                 Button("閉じる") {
                     showShortcutSheet = false
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(MRTheme.accent)
+                .buttonStyle(.mr(.primary, size: .sm))
+                .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(20)
+    }
+
+    private func createNewList() {
+        let trimmedName = newListName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+
+        do {
+            let id = try store.createList(name: trimmedName, color: newListColor)
+            store.selection = .calendar(id)
+            selectedCalendarID = id
+            app.showToast(ToastMessage(kind: .success, title: "リストを作成しました", detail: trimmedName))
+            newListName = ""
+            showNewListSheet = false
+        } catch {
+            app.showToast(ToastMessage(kind: .failure, title: "リストを作成できませんでした", detail: error.localizedDescription))
+        }
     }
 
     private func select(_ selection: ReminderSelection) {

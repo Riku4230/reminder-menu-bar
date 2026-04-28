@@ -88,11 +88,8 @@ struct ModernMenuToggleRow: View {
                 .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(Color.primaryText)
             Spacer(minLength: 10)
-            Toggle("", isOn: $isOn)
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .tint(MRTheme.accent)
+            MRModernSwitch(isOn: $isOn, compact: true)
+                .allowsHitTesting(false)
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 4)

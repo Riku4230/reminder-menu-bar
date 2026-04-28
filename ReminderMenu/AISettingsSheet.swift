@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// AI プロバイダの選択 + モデル選択 + API キー登録 UI。
@@ -6,145 +7,209 @@ struct AISettingsSheet: View {
     @EnvironmentObject private var aiSettings: AISettings
     @Environment(\.dismiss) private var dismiss
 
+    @State private var selectedProvider: AIProviderID = .claudeCode
     @State private var apiKeyDrafts: [AIProviderID: String] = [:]
     @State private var revealKey: AIProviderID? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: MRTheme.Space.lg) {
-            header
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Nudge が AI モードで使うプロバイダを選びます。")
-                    .font(.system(size: MRTheme.FontSize.footnote))
-                    .foregroundStyle(Color.secondaryText)
-                HStack(spacing: 5) {
-                    Image(systemName: "lock.shield.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(MRTheme.green)
-                    Text("API キーは macOS Keychain に暗号化保存され、このデバイス内に閉じます (iCloud 同期なし)。")
-                        .font(.system(size: MRTheme.FontSize.caption))
-                        .foregroundStyle(Color.secondaryText)
-                }
-            }
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: MRTheme.Space.md) {
-                    ForEach(AIProviderID.allCases) { provider in
-                        providerCard(provider)
-                    }
-                }
-                .padding(.bottom, MRTheme.Space.xs)
-            }
-            .scrollIndicators(.hidden)
-        }
-        .padding(MRTheme.Space.xl + 2)
-        .frame(width: 480, height: 580)
-        .background(MRTheme.Surface.background)
-        .onAppear { hydrateDrafts() }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("AI プロバイダ設定")
-                    .font(.system(size: MRTheme.FontSize.title, weight: .bold))
-                Text("選択中: \(aiSettings.providerID.displayName)")
-                    .font(.system(size: MRTheme.FontSize.footnote))
-                    .foregroundStyle(Color.secondaryText)
-            }
-            Spacer()
-            MRCloseButton { dismiss() }
-        }
-    }
-
-    // MARK: - Provider Card
-
-    @ViewBuilder
-    private func providerCard(_ provider: AIProviderID) -> some View {
-        let isSelected = aiSettings.providerID == provider
-        let isEnabled = aiSettings.hasAPIKey(provider)
-        MRCard(selected: isSelected, padding: MRTheme.Space.lg) {
+        MRSettingsSurface(
+            title: "AI 設定",
+            subtitle: "AI モードで使うプロバイダ、モデル、API キーを管理します。",
+            size: .preferences,
+            onClose: { dismiss() }
+        ) {
             VStack(alignment: .leading, spacing: MRTheme.Space.lg) {
-                providerHeader(provider, isSelected: isSelected, isEnabled: isEnabled)
-                if !provider.availableModels.isEmpty {
-                    modelRow(provider)
-                }
-                if provider.requiresAPIKey {
-                    apiKeyField(provider)
-                } else {
-                    Text("Claude Code は CLI のサブスク認証 (Max/Team/Enterprise) または ANTHROPIC_API_KEY を再利用します。Nudge 側で API キーは保持しません。")
-                        .font(.system(size: MRTheme.FontSize.footnote))
-                        .foregroundStyle(Color.secondaryText)
-                        .padding(.vertical, MRTheme.Space.xxs)
-                }
-            }
-        }
-    }
+                MRInfoBanner(
+                    systemImage: "lock.shield.fill",
+                    text: "API キーは macOS Keychain に暗号化保存され、このデバイス内に閉じます (iCloud 同期なし)。",
+                    tint: MRTheme.green
+                )
 
-    @ViewBuilder
-    private func providerHeader(_ provider: AIProviderID, isSelected: Bool, isEnabled: Bool) -> some View {
-        HStack(spacing: MRTheme.Space.md) {
-            Image(systemName: providerSymbol(provider))
-                .font(.system(size: MRTheme.FontSize.label, weight: .semibold))
-                .foregroundStyle(isSelected ? MRTheme.accent : Color.secondaryText)
-                .frame(width: 18)
-            Text(provider.displayName)
-                .font(.system(size: MRTheme.FontSize.label + 0.5, weight: .semibold))
-            MRPill(label: isEnabled ? "有効" : "無効",
-                   style: isEnabled ? .success : .warning)
-            Spacer()
-            if isSelected {
-                MRPill(label: "選択中", systemImage: "checkmark", style: .success)
-            } else {
-                Button("使う") { aiSettings.providerID = provider }
-                    .buttonStyle(.mr(.primary, size: .sm))
-            }
-        }
-    }
+                HStack(alignment: .top, spacing: MRTheme.Space.xl) {
+                    providerList
+                        .frame(width: 150)
 
-    @ViewBuilder
-    private func modelRow(_ provider: AIProviderID) -> some View {
-        HStack(spacing: MRTheme.Space.md) {
-            Text("モデル")
-                .font(.system(size: MRTheme.FontSize.footnote, weight: .medium))
-                .foregroundStyle(Color.secondaryText)
-                .frame(width: 56, alignment: .leading)
-            Picker("", selection: Binding(
-                get: { aiSettings.model(for: provider) },
-                set: { aiSettings.setModel($0, for: provider) }
-            )) {
-                ForEach(provider.availableModels, id: \.self) { m in
-                    Text(m).tag(m)
+                    Rectangle()
+                        .fill(MRTheme.Border.hairline)
+                        .frame(width: 0.5)
+
+                    ScrollView {
+                        providerDetail(selectedProvider)
+                    }
+                    .scrollIndicators(.hidden)
                 }
             }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .controlSize(.small)
-        }
-    }
-
-    @ViewBuilder
-    private func apiKeyField(_ provider: AIProviderID) -> some View {
-        VStack(alignment: .leading, spacing: MRTheme.Space.sm) {
-            HStack(spacing: MRTheme.Space.sm) {
-                Text("API キー")
-                    .font(.system(size: MRTheme.FontSize.footnote, weight: .medium))
+        } footer: {
+            HStack(spacing: MRTheme.Space.md) {
+                Text("選択中: \(aiSettings.providerID.displayName)")
+                    .font(.system(size: MRTheme.FontSize.footnote, weight: .semibold))
                     .foregroundStyle(Color.secondaryText)
                 Spacer()
+                Button("閉じる") { dismiss() }
+                    .buttonStyle(.mr(.primary, size: .sm))
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .onAppear {
+            hydrateDrafts()
+            selectedProvider = aiSettings.providerID
+        }
+    }
+
+    private var providerList: some View {
+        VStack(alignment: .leading, spacing: MRTheme.Space.sm) {
+            MRSectionHeader(title: "プロバイダ")
+            ForEach(AIProviderID.allCases) { provider in
+                providerListRow(provider)
+            }
+        }
+    }
+
+    private func providerListRow(_ provider: AIProviderID) -> some View {
+        let isFocused = selectedProvider == provider
+        let isActive = aiSettings.providerID == provider
+        let isEnabled = aiSettings.hasAPIKey(provider)
+
+        return Button {
+            selectedProvider = provider
+        } label: {
+            HStack(spacing: MRTheme.Space.md) {
+                Image(systemName: providerSymbol(provider))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(isFocused ? MRTheme.accent : Color.secondaryText)
+                    .frame(width: 18)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: MRTheme.Space.xs) {
+                        Text(provider.displayName)
+                            .font(.system(size: MRTheme.FontSize.label, weight: .semibold))
+                            .foregroundStyle(Color.primaryText)
+                            .lineLimit(1)
+                        if isActive {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(MRTheme.green)
+                        }
+                    }
+                    Text(isEnabled ? "有効" : "未設定")
+                        .font(.system(size: MRTheme.FontSize.caption, weight: .medium))
+                        .foregroundStyle(isEnabled ? MRTheme.green : MRTheme.yellow)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(MRTheme.Space.md)
+            .background(
+                RoundedRectangle(cornerRadius: MRTheme.Radius.md, style: .continuous)
+                    .fill(isFocused ? MRTheme.accentFaint : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MRTheme.Radius.md, style: .continuous)
+                    .stroke(isFocused ? MRTheme.Border.accent : Color.clear, lineWidth: 0.7)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: MRTheme.Radius.md, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func providerDetail(_ provider: AIProviderID) -> some View {
+        let isSelected = aiSettings.providerID == provider
+        let isEnabled = aiSettings.hasAPIKey(provider)
+
+        return VStack(alignment: .leading, spacing: MRTheme.Space.lg) {
+            MRCard(selected: isSelected, padding: MRTheme.Space.xl) {
+                VStack(alignment: .leading, spacing: MRTheme.Space.xl) {
+                    HStack(alignment: .center, spacing: MRTheme.Space.md) {
+                        Image(systemName: providerSymbol(provider))
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(isSelected ? MRTheme.accent : Color.secondaryText)
+                            .frame(width: 26)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(provider.displayName)
+                                .font(.system(size: MRTheme.FontSize.heading, weight: .bold))
+                                .foregroundStyle(Color.primaryText)
+                            Text(providerTagline(provider))
+                                .font(.system(size: MRTheme.FontSize.footnote))
+                                .foregroundStyle(Color.secondaryText)
+                        }
+
+                        Spacer()
+                    }
+
+                    HStack(spacing: MRTheme.Space.sm) {
+                        MRPill(
+                            label: isEnabled ? "有効" : "未設定",
+                            style: isEnabled ? .success : .warning
+                        )
+
+                        if isSelected {
+                            MRPill(label: "選択中", systemImage: "checkmark", style: .success)
+                        } else {
+                            Button("使う") {
+                                aiSettings.providerID = provider
+                            }
+                            .buttonStyle(.mr(.primary, size: .sm))
+                            .disabled(!isEnabled)
+                            .help(isEnabled ? "このプロバイダを使う" : "先に API キーを保存してください")
+                        }
+                    }
+
+                    Text(providerDescription(provider))
+                        .font(.system(size: MRTheme.FontSize.footnote))
+                        .foregroundStyle(Color.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if !provider.availableModels.isEmpty {
+                        modelRow(provider)
+                    }
+
+                    if provider.requiresAPIKey {
+                        apiKeyEditor(provider)
+                    }
+                }
+            }
+        }
+        .padding(.bottom, MRTheme.Space.xs)
+    }
+
+    private func modelRow(_ provider: AIProviderID) -> some View {
+        MRFieldRow(label: "モデル") {
+            ModelDropdown(
+                models: provider.availableModels,
+                selection: Binding(
+                    get: { aiSettings.model(for: provider) },
+                    set: { aiSettings.setModel($0, for: provider) }
+                )
+            )
+        }
+    }
+
+    private func apiKeyEditor(_ provider: AIProviderID) -> some View {
+        VStack(alignment: .leading, spacing: MRTheme.Space.md) {
+            HStack(spacing: MRTheme.Space.sm) {
+                Text("API キー")
+                    .font(.system(size: MRTheme.FontSize.footnote, weight: .semibold))
+                    .foregroundStyle(Color.secondaryText)
+
+                Spacer()
+
                 if let url = provider.apiKeyURL {
-                    Link(destination: url) {
+                    Button {
+                        NSWorkspace.shared.open(url)
+                    } label: {
                         HStack(spacing: 3) {
                             Image(systemName: "arrow.up.right.square")
                                 .font(.system(size: 9, weight: .semibold))
                             Text("キーを取得")
-                                .font(.system(size: MRTheme.FontSize.footnote))
+                                .font(.system(size: MRTheme.FontSize.footnote, weight: .semibold))
                         }
                         .foregroundStyle(MRTheme.accent)
                     }
                     .buttonStyle(.plain)
                 }
             }
+
             HStack(spacing: MRTheme.Space.sm) {
                 MRStyledTextField {
                     if revealKey == provider {
@@ -153,6 +218,7 @@ struct AISettingsSheet: View {
                         SecureField("sk-...", text: bindingForDraft(provider))
                     }
                 }
+                .frame(maxWidth: .infinity)
 
                 Button {
                     revealKey = (revealKey == provider) ? nil : provider
@@ -163,8 +229,7 @@ struct AISettingsSheet: View {
                 .help("表示 / 非表示")
 
                 Button("保存") {
-                    let v = (apiKeyDrafts[provider] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-                    aiSettings.setAPIKey(v.isEmpty ? nil : v, for: provider)
+                    saveAPIKey(provider)
                 }
                 .buttonStyle(.mr(.secondary, size: .sm))
 
@@ -180,7 +245,10 @@ struct AISettingsSheet: View {
         }
     }
 
-    // MARK: - Helpers
+    private func saveAPIKey(_ provider: AIProviderID) {
+        let value = (apiKeyDrafts[provider] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        aiSettings.setAPIKey(value.isEmpty ? nil : value, for: provider)
+    }
 
     private func bindingForDraft(_ provider: AIProviderID) -> Binding<String> {
         Binding(
@@ -198,9 +266,82 @@ struct AISettingsSheet: View {
     private func providerSymbol(_ provider: AIProviderID) -> String {
         switch provider {
         case .claudeCode: return "terminal"
-        case .anthropic:  return "sparkles"
-        case .openai:     return "circle.hexagongrid.fill"
-        case .gemini:     return "atom"
+        case .anthropic: return "sparkles"
+        case .openai: return "circle.hexagongrid.fill"
+        case .gemini: return "atom"
+        }
+    }
+
+    private func providerTagline(_ provider: AIProviderID) -> String {
+        switch provider {
+        case .claudeCode: return "ローカルの Claude Code CLI を利用"
+        case .anthropic: return "Anthropic API キーで直接実行"
+        case .openai: return "OpenAI Responses API を利用"
+        case .gemini: return "Google Gemini API を利用"
+        }
+    }
+
+    private func providerDescription(_ provider: AIProviderID) -> String {
+        switch provider {
+        case .claudeCode:
+            return "Claude Code は CLI のサブスク認証 (Max/Team/Enterprise) または ANTHROPIC_API_KEY を再利用します。Nudge 側で API キーは保持しません。"
+        default:
+            return "このプロバイダを使うには API キーの保存が必要です。モデルはここで選択でき、保存したキーは Keychain から読み込まれます。"
+        }
+    }
+}
+
+private struct ModelDropdown: View {
+    let models: [String]
+    @Binding var selection: String
+
+    @State private var isOpen = false
+
+    var body: some View {
+        Button {
+            isOpen.toggle()
+        } label: {
+            HStack(spacing: MRTheme.Space.sm) {
+                Text(selection.isEmpty ? "モデルを選択" : selection)
+                    .font(.system(size: MRTheme.FontSize.body, weight: .semibold))
+                    .foregroundStyle(selection.isEmpty ? Color.tertiaryText : Color.primaryText)
+                    .lineLimit(1)
+                Spacer(minLength: MRTheme.Space.sm)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(MRTheme.accent)
+            }
+            .padding(.horizontal, MRTheme.Space.md + 2)
+            .frame(height: 30)
+            .background(
+                RoundedRectangle(cornerRadius: MRTheme.Radius.md, style: .continuous)
+                    .fill(MRTheme.Surface.field)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MRTheme.Radius.md, style: .continuous)
+                    .stroke(isOpen ? MRTheme.Border.accent : MRTheme.Border.line, lineWidth: isOpen ? 1 : 0.5)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: MRTheme.Radius.md, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $isOpen, arrowEdge: .bottom) {
+            ModernMenuSurface {
+                VStack(spacing: 1) {
+                    ModernMenuTitle(label: "モデル")
+                    ForEach(models, id: \.self) { model in
+                        ModernMenuRow(
+                            icon: selection == model ? "checkmark" : nil,
+                            iconColor: MRTheme.accent,
+                            label: model
+                        ) {
+                            selection = model
+                            isOpen = false
+                        }
+                    }
+                }
+            }
+            .frame(width: 220)
+            .padding(6)
         }
     }
 }

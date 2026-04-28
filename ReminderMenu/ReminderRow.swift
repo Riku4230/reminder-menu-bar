@@ -839,11 +839,18 @@ struct DateTimePopover: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                Toggle("期限を設定", isOn: $hasDueDate.animation())
+                Text("期限を設定")
                     .font(.system(size: 12, weight: .semibold))
-                    .toggleStyle(.switch)
-                    .tint(MRTheme.accent)
+                    .foregroundStyle(Color.primaryText)
                 Spacer()
+                MRModernSwitch(isOn: Binding(
+                    get: { hasDueDate },
+                    set: { newValue in
+                        withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
+                            hasDueDate = newValue
+                        }
+                    }
+                ))
             }
 
             if hasDueDate {
@@ -851,10 +858,20 @@ struct DateTimePopover: View {
 
                 Divider().opacity(0.4)
 
-                Toggle("時刻を含める", isOn: $includesTime.animation())
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .toggleStyle(.switch)
-                    .tint(MRTheme.accent)
+                HStack(spacing: 10) {
+                    Text("時刻を含める")
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(Color.primaryText)
+                    Spacer()
+                    MRModernSwitch(isOn: Binding(
+                        get: { includesTime },
+                        set: { newValue in
+                            withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
+                                includesTime = newValue
+                            }
+                        }
+                    ))
+                }
 
                 if includesTime {
                     ModernTimePicker(date: $pickedDate)
@@ -871,10 +888,8 @@ struct DateTimePopover: View {
                     apply()
                     onClose()
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(MRTheme.accent)
+                .buttonStyle(.mr(.primary, size: .sm))
                 .keyboardShortcut(.defaultAction)
-                .controlSize(.small)
             }
         }
         .padding(14)
