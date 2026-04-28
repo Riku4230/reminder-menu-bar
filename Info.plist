@@ -6,12 +6,16 @@
     <string>ja</string>
     <key>CFBundleExecutable</key>
     <string>ReminderMenu</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>dev.remindermenu.app</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>ReminderMenu</string>
+    <string>Nudge</string>
+    <key>CFBundleDisplayName</key>
+    <string>Nudge</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

@@ -151,9 +151,12 @@ struct ReminderGroup: Identifiable {
 
 /// 親子関係を表す描画用のノード。同じリマインダーが複数 depth で表示される可能性は無いので
 /// id は EKReminder.calendarItemIdentifier をそのまま使う。
+/// `isOrphanedChild` は「親 ID は存在するが、現在の表示グループに親が居ない」状態。
+/// この場合 depth=0 でフラットに描画されるが、UI 側で「子タスク」マークを出して関係性を伝える。
 struct ReminderTreeNode: Identifiable {
     let reminder: EKReminder
     let depth: Int
+    let isOrphanedChild: Bool
     var id: String { reminder.calendarItemIdentifier }
 }
 
@@ -440,11 +443,40 @@ final class ReminderStore: NSObject, ObservableObject {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
+        let parentTitle = parent.title ?? ""
+        let listName = parent.calendar.title
+
+        // Shortcut 側の検索フィルタが「完了済みではない」になっているので、完了済み親には紐付かずフラット追加されてしまう。
+        // 事前に弾いてユーザーに教える。
+        if parent.isCompleted {
+            throw NSError(
+                domain: "ReminderMenu",
+                code: 101,
+                userInfo: [NSLocalizedDescriptionKey:
+                    "完了済みのリマインダーにはサブタスクを追加できません。先に未完了に戻してください。"]
+            )
+        }
+
+        // Shortcuts の「リマインダーを検索」は ID フィルタを持たないため、親はタイトル + リストで特定する。
+        // 同名・同リストの未完了候補が複数あると誤った親に紐付くので、未然に弾く。
+        let duplicates = reminders.filter {
+            !$0.isCompleted && $0.title == parentTitle && $0.calendar.title == listName
+        }
+        if duplicates.count > 1 {
+            throw NSError(
+                domain: "ReminderMenu",
+                code: 100,
+                userInfo: [NSLocalizedDescriptionKey:
+                    "「\(parentTitle)」と同名のリマインダーが「\(listName)」に \(duplicates.count) 件あります。" +
+                    "サブタスクの親を一意に特定できないため、どちらかの名前を変えてから再実行してください。"]
+            )
+        }
+
         let beforeTime = Date()
         try await ShortcutsBridge.addSubtask(
-            parentTitle: parent.title ?? "",
+            parentTitle: parentTitle,
             title: trimmed,
-            listName: parent.calendar.title
+            listName: listName
         )
 
         // memo を後付けする場合は、Shortcuts が作成したリマインダーが
@@ -458,10 +490,48 @@ final class ReminderStore: NSObject, ObservableObject {
                 memo: trimmedMemo,
                 createdAfter: beforeTime
             )
-        } else {
-            try? await Task.sleep(nanoseconds: 400_000_000)
         }
-        reloadReminders()
+        // EventKit と SQLite (Reminders.app DB) の反映タイミングがずれるため、
+        // 楽観的に親子マップを更新してから複数回リロードする。
+        // 1) EventKit のリマインダー一覧を待つ（Shortcut 経由は ~300ms 遅延あり）
+        // 2) 新規子の ID を特定して parentMap / childMap に即時反映
+        // 3) その後 SQLite からの正式マップ読み込みを順次試行
+        let parentID = parent.calendarItemIdentifier
+        try? await Task.sleep(nanoseconds: 350_000_000)
+        await fetchAndPatchOptimisticParentMap(parent: parent, title: trimmed, createdAfter: beforeTime)
+
+        for delayMs in [400, 900, 1600] {
+            try? await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
+            reloadReminders()
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            if childMap[parentID]?.isEmpty == false { break }
+        }
+    }
+
+    /// SQLite からの parentMap 更新が遅いため、Shortcut で追加した子を EventKit から探して
+    /// その場で parentMap / childMap に書き込む。SQLite 反映後に refreshParentMap で正式更新される。
+    private func fetchAndPatchOptimisticParentMap(parent: EKReminder, title: String, createdAfter: Date) async {
+        let predicate = eventStore.predicateForReminders(in: [parent.calendar])
+        let fetched: [EKReminder] = await withCheckedContinuation { continuation in
+            eventStore.fetchReminders(matching: predicate) { result in
+                continuation.resume(returning: result ?? [])
+            }
+        }
+        let parentID = parent.calendarItemIdentifier
+        let candidate = fetched
+            .filter { $0.title == title && $0.calendarItemIdentifier != parentID }
+            .filter { ($0.creationDate ?? .distantPast) >= createdAfter }
+            .max { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
+        guard let candidate else { return }
+        let childID = candidate.calendarItemIdentifier
+        if parentMap[childID] == nil {
+            parentMap[childID] = parentID
+            childMap[parentID, default: []].append(childID)
+        }
+        // reminders 配列にも入れて即時 UI 反映
+        if !reminders.contains(where: { $0.calendarItemIdentifier == childID }) {
+            reminders.append(candidate)
+        }
     }
 
     /// 直近で作成された title 一致のリマインダーを探して notes をセットする。

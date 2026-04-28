@@ -445,31 +445,62 @@ struct MainView: View {
     }
 
     /// グループ内のリマインダーを「親 → 子」の順に並べ、各要素にインデント深さを付与する。
-    /// 親が同じグループに居ない子は depth=0 でフォールバック表示する。
+    /// 親が同じグループに居ない子は depth=0 でフォールバック表示するが、
+    /// `isOrphanedChild=true` を付けて UI 側で「子タスク」マークを出せるようにする。
     private func buildReminderTree(_ items: [EKReminder]) -> [ReminderTreeNode] {
         let allIDs = Set(items.map(\.calendarItemIdentifier))
         let parentMap = store.parentMap
 
-        // childMap: parent identifier -> [child reminder]
         var childrenByParent: [String: [EKReminder]] = [:]
-        var topLevel: [EKReminder] = []
+        var topLevel: [(EKReminder, Bool)] = []  // (reminder, isOrphanedChild)
         for item in items {
-            if let parentID = parentMap[item.calendarItemIdentifier], allIDs.contains(parentID) {
-                childrenByParent[parentID, default: []].append(item)
+            if let parentID = parentMap[item.calendarItemIdentifier] {
+                if allIDs.contains(parentID) {
+                    childrenByParent[parentID, default: []].append(item)
+                } else {
+                    topLevel.append((item, true))
+                }
             } else {
-                topLevel.append(item)
+                topLevel.append((item, false))
             }
         }
 
         var nodes: [ReminderTreeNode] = []
         nodes.reserveCapacity(items.count)
-        for parent in topLevel {
-            nodes.append(ReminderTreeNode(reminder: parent, depth: 0))
+        for (parent, isOrphan) in topLevel {
+            nodes.append(ReminderTreeNode(reminder: parent, depth: 0, isOrphanedChild: isOrphan))
             for child in childrenByParent[parent.calendarItemIdentifier] ?? [] {
-                nodes.append(ReminderTreeNode(reminder: child, depth: 1))
+                nodes.append(ReminderTreeNode(reminder: child, depth: 1, isOrphanedChild: false))
             }
         }
         return nodes
+    }
+
+    private var fullDiskAccessBanner: some View {
+        Button {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+                NSWorkspace.shared.open(url)
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("サブタスクの階層表示にはフルディスクアクセスが必要です")
+                        .font(.system(size: 11.5, weight: .semibold))
+                    Text("クリックして設定を開く → Nudge を ON にしてアプリを再起動")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.secondaryText)
+                }
+                Spacer()
+            }
+            .padding(8)
+            .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Color.orange.opacity(0.3), lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .padding(.bottom, 4)
     }
 
     private var reminderList: some View {
@@ -482,42 +513,54 @@ struct MainView: View {
                 CalendarView(reminders: store.filteredReminders)
                     .environmentObject(store)
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(store.groupedReminders, id: \.id) { group in
-                            if let title = group.title {
-                                HStack(spacing: 7) {
-                                    Rectangle()
-                                        .fill(group.color)
-                                        .frame(width: 7, height: 7)
-                                        .rotationEffect(.degrees(45))
-                                    Text(title)
-                                        .font(.system(size: 10.5, weight: .bold))
-                                        .foregroundStyle(Color.secondaryText)
-                                        .tracking(0.4)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.top, 10)
-                                .padding(.bottom, 2)
-                            }
-
-                            ForEach(buildReminderTree(group.reminders), id: \.id) { node in
-                                ReminderRow(reminder: node.reminder, indentLevel: node.depth)
+                VStack(spacing: 0) {
+                    if !store.hasFullDiskAccess {
+                        fullDiskAccessBanner
+                    }
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(store.groupedReminders, id: \.id) { group in
+                                if let title = group.title {
+                                    HStack(spacing: 7) {
+                                        Rectangle()
+                                            .fill(group.color)
+                                            .frame(width: 7, height: 7)
+                                            .rotationEffect(.degrees(45))
+                                        Text(title)
+                                            .font(.system(size: 10.5, weight: .bold))
+                                            .foregroundStyle(Color.secondaryText)
+                                            .tracking(0.4)
+                                        Spacer()
+                                    }
                                     .padding(.horizontal, 8)
-                                    .transition(
-                                        .asymmetric(
-                                            insertion: .opacity,
-                                            removal: .opacity.combined(with: .move(edge: .leading))
-                                        )
+                                    .padding(.top, 10)
+                                    .padding(.bottom, 2)
+                                }
+
+                                ForEach(buildReminderTree(group.reminders), id: \.id) { node in
+                                    ReminderRow(
+                                        reminder: node.reminder,
+                                        indentLevel: node.depth,
+                                        isOrphanedChild: node.isOrphanedChild
                                     )
+                                        .padding(.horizontal, 8)
+                                        .transition(
+                                            .asymmetric(
+                                                insertion: .opacity
+                                                    .combined(with: .scale(scale: 0.7, anchor: .top))
+                                                    .combined(with: .offset(y: -40)),
+                                                removal: .opacity.combined(with: .move(edge: .leading))
+                                            )
+                                        )
+                                }
                             }
                         }
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 8)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.62), value: store.reminders.map(\.calendarItemIdentifier))
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 8)
+                    .scrollIndicators(.hidden)
                 }
-                .scrollIndicators(.hidden)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -552,51 +595,30 @@ struct MainView: View {
         .padding(24)
     }
 
+    private var aiToggleButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
+                inputMode = (inputMode == .ai) ? .normal : .ai
+            }
+        } label: {
+            let isAI = inputMode == .ai
+            let bgColor: Color = isAI ? MRTheme.accent : Color.black.opacity(0.04)
+            let borderColor: Color = isAI ? MRTheme.accent.opacity(0.6) : Color.black.opacity(0.08)
+            Image(systemName: "sparkles")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(isAI ? Color.white : Color.secondaryText)
+                .frame(width: 26, height: 26)
+                .background(Circle().fill(bgColor))
+                .overlay(Circle().stroke(borderColor, lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .help(inputMode == .ai ? "AI モード（クリックで通常）" : "通常モード（クリックで AI）")
+    }
+
     private var inputPanel: some View {
         VStack(alignment: .leading, spacing: 9) {
-            HStack(spacing: 4) {
-                ForEach(InputMode.allCases, id: \.self) { mode in
-                    Button {
-                        withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
-                            inputMode = mode
-                        }
-                    } label: {
-                        HStack(spacing: 5) {
-                            if mode == .ai {
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 10, weight: .semibold))
-                            }
-                            Text(mode.rawValue)
-                        }
-                        .font(.system(size: 11.5, weight: .bold))
-                        .foregroundStyle(inputMode == mode ? (mode == .ai ? .white : .primaryText) : .secondaryText)
-                        .padding(.horizontal, 13)
-                        .padding(.vertical, 6)
-                        .background(
-                            Group {
-                                if inputMode == mode {
-                                    if mode == .ai {
-                                        Capsule().fill(MRTheme.accent)
-                                    } else {
-                                        Capsule().fill(Color.white.opacity(0.70))
-                                    }
-                                }
-                            }
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(3)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(.white.opacity(0.38), lineWidth: 0.5))
-
             HStack(spacing: 10) {
-                if inputMode == .ai {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(MRTheme.accent)
-                }
+                aiToggleButton
 
                 TextField(
                     inputMode == .ai ? "自然言語で追加…" : "新規リマインダー…",
@@ -609,8 +631,13 @@ struct MainView: View {
                     .focused($inputFocused)
                     .disabled(isParsing)
                     .onKeyPress(.return) {
-                        // Shift+Return は改行を許可、それ以外は送信
+                        // Shift+Return は改行を許可
                         if NSEvent.modifierFlags.contains(.shift) {
+                            return .ignored
+                        }
+                        // IME 変換中（marked text あり）なら確定の Enter として通す
+                        if let editor = NSApp.keyWindow?.firstResponder as? NSTextView,
+                           editor.hasMarkedText() {
                             return .ignored
                         }
                         submitInput()
