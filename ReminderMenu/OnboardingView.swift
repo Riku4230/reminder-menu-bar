@@ -184,7 +184,30 @@ struct OnboardingView: View {
     private var fullDiskAccessStep: some View {
         VStack(alignment: .leading, spacing: 14) {
             paragraph("サブタスクの追加は前ステップだけで動きますが、メニュー内で **親 → 子の階層表示** をするには純正リマインダーの SQLite を読む必要があり、フルディスクアクセスの許可が必要です。")
-            paragraph("システム設定が開くので、リストに **Nudge** を追加して ON にしてください。設定後はアプリの再起動を推奨します。")
+
+            // 重要な注意（macOS の TCC 仕様）
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(MRTheme.yellow)
+                    .padding(.top, 1)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("許可した瞬間に Nudge が再起動します")
+                        .font(.system(size: 11.5, weight: .bold))
+                        .foregroundStyle(Color.primaryText)
+                    Text("これは macOS の仕様（TCC 権限変更で対象アプリが自動終了）です。再起動後は階層表示が有効になります。")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Color.secondaryText)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(10)
+            .background(MRTheme.yellow.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(MRTheme.yellow.opacity(0.30), lineWidth: 0.5)
+            )
 
             statusBadge(
                 ok: store.hasFullDiskAccess,
@@ -250,33 +273,35 @@ struct OnboardingView: View {
     // MARK: - Footer
 
     private var footer: some View {
-        HStack {
+        HStack(spacing: 10) {
             if step == .welcome {
-                Button("スキップして始める") { complete() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.secondaryText)
-                    .font(.system(size: 12))
+                ghostButton(label: "スキップ") { complete() }
             } else {
-                Button("戻る") { back() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.secondaryText)
-                    .font(.system(size: 12))
+                ghostButton(label: "← 戻る") { back() }
             }
             Spacer()
-            Button(step == .aiProvider ? "完了して始める" : "次へ →") {
-                advance()
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(MRTheme.accent)
-            .controlSize(.regular)
-            .keyboardShortcut(.defaultAction)
+            primaryButton(
+                label: step == .aiProvider ? "完了して始める" : "次へ",
+                trailingIcon: step == .aiProvider ? "checkmark" : "arrow.right"
+            ) { advance() }
+                .keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 22)
-        .padding(.vertical, 16)
+        .padding(.vertical, 14)
         .background(MRTheme.Surface.glass)
         .overlay(alignment: .top) {
             Rectangle().fill(MRTheme.Border.hairline).frame(height: 0.5)
         }
+    }
+
+    // MARK: - Buttons
+
+    private func primaryButton(label: String, trailingIcon: String?, action: @escaping () -> Void) -> some View {
+        OnboardingPrimaryButton(label: label, trailingIcon: trailingIcon, action: action)
+    }
+
+    private func ghostButton(label: String, action: @escaping () -> Void) -> some View {
+        OnboardingGhostButton(label: label, action: action)
     }
 
     // MARK: - Reusable bits
@@ -360,5 +385,94 @@ struct OnboardingView: View {
 
     private func complete() {
         hasCompletedOnboarding = true
+    }
+}
+
+// MARK: - Reusable buttons
+
+private struct OnboardingPrimaryButton: View {
+    let label: String
+    let trailingIcon: String?
+    let action: () -> Void
+
+    @State private var isHovering = false
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text(label)
+                    .font(.system(size: 13, weight: .bold))
+                if let trailingIcon {
+                    Image(systemName: trailingIcon)
+                        .font(.system(size: 10, weight: .bold))
+                }
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 9)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                MRTheme.accent,
+                                MRTheme.accent.opacity(isHovering ? 1.0 : 0.92)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.white.opacity(isHovering ? 0.06 : 0))
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color.white.opacity(0.16), lineWidth: 0.6)
+            )
+            .shadow(color: MRTheme.accent.opacity(isHovering ? 0.42 : 0.30), radius: isHovering ? 10 : 6, y: 3)
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.22, dampingFraction: 0.85), value: isHovering)
+            .animation(.spring(response: 0.18, dampingFraction: 0.78), value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+        .pressEvents(onPress: { isPressed = true }, onRelease: { isPressed = false })
+    }
+}
+
+private struct OnboardingGhostButton: View {
+    let label: String
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 12.5, weight: .medium))
+                .foregroundStyle(isHovering ? Color.primaryText : Color.secondaryText)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    isHovering ? MRTheme.Surface.inset : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                )
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+    }
+}
+
+// 押下イベントを取りたい時用の小ヘルパー
+private extension View {
+    func pressEvents(onPress: @escaping () -> Void, onRelease: @escaping () -> Void) -> some View {
+        simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in onPress() }
+                .onEnded { _ in onRelease() }
+        )
     }
 }
