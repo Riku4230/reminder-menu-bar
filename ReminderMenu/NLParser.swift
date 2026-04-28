@@ -1,6 +1,76 @@
 import Foundation
 
 enum NLParser {
+    struct SubtaskCandidate: Equatable {
+        var title: String
+        var memo: String?
+    }
+
+    /// 親タスクからサブタスク候補（title + memo）を生成する。Claude CLI が無い／失敗時は空配列。
+    static func generateSubtasks(parentTitle: String, parentMemo: String?) async -> [SubtaskCandidate] {
+        let title = parentTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return [] }
+        let memo = parentMemo?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let result = await Task.detached(priority: .userInitiated) {
+            try? runClaudeSubtaskGenerator(parentTitle: title, parentMemo: memo)
+        }.value
+        return result ?? []
+    }
+
+    private static func runClaudeSubtaskGenerator(parentTitle: String, parentMemo: String?) throws -> [SubtaskCandidate] {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["claude", "-p", subtaskPrompt(parentTitle: parentTitle, parentMemo: parentMemo)]
+
+        let output = Pipe()
+        let error = Pipe()
+        process.standardOutput = output
+        process.standardError = error
+
+        try process.run()
+        let finished = wait(process: process, timeout: 15)
+        if !finished {
+            process.terminate()
+            return []
+        }
+
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        guard let text = String(data: data, encoding: .utf8), !text.isEmpty else { return [] }
+        let jsonText = extractJSON(from: text)
+        guard let jsonData = jsonText.data(using: .utf8) else { return [] }
+
+        let response = try JSONDecoder().decode(SubtaskResponse.self, from: jsonData)
+        return response.subtasks.compactMap { item -> SubtaskCandidate? in
+            let title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !title.isEmpty else { return nil }
+            let memo = item.memo?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return SubtaskCandidate(
+                title: title,
+                memo: (memo?.isEmpty ?? true) ? nil : memo
+            )
+        }
+    }
+
+    private static func subtaskPrompt(parentTitle: String, parentMemo: String?) -> String {
+        let memoBlock = (parentMemo?.isEmpty ?? true) ? "" : "\nParent memo:\n\(parentMemo!)\n"
+        return """
+        You are an assistant for a macOS Reminders app. The user has a parent task and wants to break it down into concrete, actionable subtasks.
+
+        Parent task: \(parentTitle)
+        \(memoBlock)
+        Generate 3 to 7 concrete subtasks in Japanese. Each subtask should have:
+        - "title": A short imperative phrase (about 5–25 characters), independently actionable. Avoid abstractions like "頑張る" / "計画する". Order roughly by execution sequence.
+        - "memo": (optional) A 1–2 sentence note giving more context, hints, or sub-points. Omit when the title is self-explanatory.
+
+        Return JSON only:
+        {"subtasks": [
+          {"title": "会場を予約する", "memo": "見積もりを 3 社から取り、駐車場の有無を確認"},
+          {"title": "招待状を送る"}
+        ]}
+        """
+    }
+
     static func parse(_ input: String, availableLists: [ReminderCalendar]) async -> [ReminderDraft] {
         let cleanInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanInput.isEmpty else { return [] }
@@ -100,6 +170,15 @@ enum NLParser {
 
 private struct ClaudeParseResponse: Codable {
     var tasks: [ClaudeTask]
+}
+
+private struct SubtaskResponse: Codable {
+    var subtasks: [SubtaskItem]
+}
+
+private struct SubtaskItem: Codable {
+    var title: String
+    var memo: String?
 }
 
 private struct ClaudeTask: Codable {

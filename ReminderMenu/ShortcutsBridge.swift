@@ -53,13 +53,17 @@ enum ShortcutsBridge {
     }
 
     /// サブタスクを追加。Shortcuts CLI が同期的に終了するまで await する。
-    static func addSubtask(parentID: String, title: String, listName: String) async throws {
+    ///
+    /// macOS Shortcuts の「リマインダーを検索」アクションは ID フィルタを持たないため、
+    /// 親リマインダーは `parentTitle` + `listName` の組で特定する。
+    /// 同一リスト内に同名の親があると誤認するので呼び出し側で重複に注意すること。
+    static func addSubtask(parentTitle: String, title: String, listName: String) async throws {
         guard isInstalled() else {
             throw BridgeError.shortcutNotInstalled
         }
 
         let payload: [String: String] = [
-            "parentID": parentID,
+            "parentTitle": parentTitle,
             "title": title,
             "listName": listName
         ]

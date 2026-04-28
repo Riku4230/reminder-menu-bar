@@ -22,6 +22,7 @@ struct ReminderRow: View {
     @State private var isAddingSubtask = false
     @State private var newSubtaskText = ""
     @State private var subtaskInFlight = false
+    @State private var showSubtaskGenerator = false
     @FocusState private var titleFocused: Bool
     @FocusState private var memoFocused: Bool
     @FocusState private var tagFocused: Bool
@@ -328,23 +329,49 @@ struct ReminderRow: View {
                 }
             }
         } else {
-            Button {
-                beginSubtaskAdd()
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 9, weight: .bold))
-                    Text("サブタスクを追加")
-                        .font(.system(size: 11, weight: .medium))
+            HStack(spacing: 6) {
+                Button {
+                    beginSubtaskAdd()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("サブタスクを追加")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(Color.secondaryText)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.white.opacity(0.85), in: Capsule())
+                    .overlay(Capsule().stroke(Color.black.opacity(0.08), lineWidth: 0.5))
                 }
-                .foregroundStyle(Color.secondaryText)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Color.white.opacity(0.85), in: Capsule())
-                .overlay(Capsule().stroke(Color.black.opacity(0.08), lineWidth: 0.5))
+                .buttonStyle(.plain)
+                .help("このタスクの下にサブタスクを追加")
+
+                Button {
+                    showSubtaskGenerator = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("AIで生成")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(MRTheme.accent)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(MRTheme.accentSoft, in: Capsule())
+                    .overlay(Capsule().stroke(MRTheme.accent.opacity(0.25), lineWidth: 0.5))
+                }
+                .buttonStyle(.plain)
+                .help("AI に親タスクを分解してもらう")
+                .popover(isPresented: $showSubtaskGenerator, arrowEdge: .top) {
+                    SubtaskGeneratorView(parent: reminder) {
+                        showSubtaskGenerator = false
+                    }
+                    .environmentObject(store)
+                }
             }
-            .buttonStyle(.plain)
-            .help("このタスクの下にサブタスクを追加")
         }
     }
 

@@ -431,18 +431,72 @@ final class ReminderStore: NSObject, ObservableObject {
     }
 
     /// Shortcuts.app 経由でサブタスクを追加。
-    /// EventKit に書き込み API が無いため `/usr/bin/shortcuts run` を呼び出す。
-    func addSubtask(under parent: EKReminder, title: String) async throws {
+    ///
+    /// EventKit には親子関係の書き込み API が無いので、Shortcuts.app 側で
+    /// 親を指定してサブタスクを生成する。memo は Shortcuts では渡せないため、
+    /// 生成後に EventKit でタイトル + creationDate でその新規リマインダーを
+    /// 特定し、`notes` を後付けで保存する。
+    func addSubtask(under parent: EKReminder, title: String, memo: String? = nil) async throws {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+
+        let beforeTime = Date()
         try await ShortcutsBridge.addSubtask(
-            parentID: parent.calendarItemIdentifier,
+            parentTitle: parent.title ?? "",
             title: trimmed,
             listName: parent.calendar.title
         )
-        // EKEventStoreChanged で勝手にリロードされるはずだが、Shortcuts 経由は通知が遅れることがあるので保険
-        try? await Task.sleep(nanoseconds: 400_000_000)
+
+        // memo を後付けする場合は、Shortcuts が作成したリマインダーが
+        // EventKit から見えるようになるまで少し待ってから検索する
+        let trimmedMemo = memo?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let trimmedMemo, !trimmedMemo.isEmpty {
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            await applyMemoToNewSubtask(
+                parent: parent,
+                title: trimmed,
+                memo: trimmedMemo,
+                createdAfter: beforeTime
+            )
+        } else {
+            try? await Task.sleep(nanoseconds: 400_000_000)
+        }
         reloadReminders()
+    }
+
+    /// 直近で作成された title 一致のリマインダーを探して notes をセットする。
+    /// 見つからない場合は静かに諦める（リマインダーは追加されているので致命的ではない）。
+    private func applyMemoToNewSubtask(parent: EKReminder, title: String, memo: String, createdAfter: Date) async {
+        let predicate = eventStore.predicateForReminders(in: [parent.calendar])
+        let fetched: [EKReminder] = await withCheckedContinuation { continuation in
+            eventStore.fetchReminders(matching: predicate) { result in
+                continuation.resume(returning: result ?? [])
+            }
+        }
+
+        // 同タイトル、createdAfter 以降に作成、もしくは（FDA がある場合）親 ID が一致するもの
+        let parentID = parent.calendarItemIdentifier
+        let candidates = fetched.filter { reminder in
+            guard reminder.title == title else { return false }
+            if let creation = reminder.creationDate, creation >= createdAfter { return true }
+            // フォールバック: 親子マップに登録があるか
+            if let mappedParent = parentMap[reminder.calendarItemIdentifier], mappedParent == parentID {
+                return true
+            }
+            return false
+        }
+
+        let target = candidates.max { lhs, rhs in
+            (lhs.creationDate ?? .distantPast) < (rhs.creationDate ?? .distantPast)
+        }
+        guard let target else { return }
+
+        target.notes = memo
+        do {
+            try eventStore.save(target, commit: true)
+        } catch {
+            // メモ保存だけは失敗しても本処理は完了済みなのでログレベルで握りつぶす
+        }
     }
 
     // MARK: - Progress State (in-progress via #wip tag)
