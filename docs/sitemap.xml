@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://hutch-arh.pages.dev/</loc>
     <lastmod>2026-04-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://hutch-arh.pages.dev/og-image.png</image:loc>
+      <image:title>Hutch — AI Reminder Assistant for macOS</image:title>
+      <image:caption>Apple 純正リマインダーをメニューバーから操作できる、AI 搭載の macOS アプリ。</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hutch-arh.pages.dev/hutch-icon.png</image:loc>
+      <image:title>Hutch アプリアイコン</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://hutch-arh.pages.dev/llms.txt</loc>

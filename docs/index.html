@@ -10,6 +10,8 @@
 <meta name="author" content="Riku Ogasawara" />
 <meta name="theme-color" content="#5B7CFA" />
 <link rel="canonical" href="https://hutch-arh.pages.dev/" />
+<link rel="alternate" hreflang="ja" href="https://hutch-arh.pages.dev/" />
+<link rel="alternate" hreflang="x-default" href="https://hutch-arh.pages.dev/" />
 
 <!-- Open Graph / Twitter -->
 <meta property="og:type" content="website" />
@@ -77,11 +79,44 @@
 }
 </script>
 
+<!-- Structured Data: WebSite -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": "https://hutch-arh.pages.dev/#website",
+  "url": "https://hutch-arh.pages.dev/",
+  "name": "Hutch",
+  "alternateName": "Hutch — AI Reminder Assistant for macOS",
+  "description": "Apple 純正リマインダーをメニューバーから操作できる、AI 搭載の macOS アプリ。",
+  "inLanguage": "ja",
+  "publisher": { "@id": "https://hutch-arh.pages.dev/#organization" }
+}
+</script>
+
+<!-- Structured Data: Organization -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://hutch-arh.pages.dev/#organization",
+  "name": "Hutch",
+  "url": "https://hutch-arh.pages.dev/",
+  "logo": "https://hutch-arh.pages.dev/hutch-icon.png",
+  "founder": { "@id": "https://github.com/Riku4230#person" },
+  "sameAs": [
+    "https://github.com/Riku4230/Hutch",
+    "https://github.com/Riku4230"
+  ]
+}
+</script>
+
 <!-- Structured Data: Person (publisher) -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Person",
+  "@id": "https://github.com/Riku4230#person",
   "name": "Riku Ogasawara",
   "url": "https://github.com/Riku4230",
   "sameAs": ["https://github.com/Riku4230"]
