@@ -3,7 +3,7 @@ import EventKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-private enum InputMode: String, CaseIterable {
+enum InputMode: String, CaseIterable {
     case normal = "通常"
     case ai = "AI"
 }
@@ -81,7 +81,7 @@ final class FnDoubleTapMonitor: ObservableObject {
     }
 }
 
-private enum DueChoice: String, CaseIterable, Identifiable {
+enum DueChoice: String, CaseIterable, Identifiable {
     case none
     case today
     case tomorrow
