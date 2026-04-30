@@ -387,6 +387,14 @@ struct MainView: View {
                     optionsOpen.toggle()
                 }
             }
+            // Tab — リスト順送り（スマート4つ → マイリスト → 先頭に戻る）
+            shortcutButton(key: .tab, modifiers: []) {
+                cycleSelection(forward: true)
+            }
+            // Shift+Tab — リスト逆送り
+            shortcutButton(key: .tab, modifiers: .shift) {
+                cycleSelection(forward: false)
+            }
             // ⎋ — popover を閉じる
             shortcutButton(key: .escape, modifiers: []) {
                 NSApp.keyWindow?.close()
@@ -1721,6 +1729,24 @@ struct MainView: View {
             inputMode = inputMode == .ai ? .normal : .ai
         }
         inputFocused = true
+    }
+
+    private func cycleSelection(forward: Bool) {
+        let smarts: [ReminderSelection] = SmartList.allCases.map { .smart($0) }
+        let calendars: [ReminderSelection] = store.calendars.map { .calendar($0.id) }
+        let all = smarts + calendars
+        guard !all.isEmpty else { return }
+
+        let currentIndex = all.firstIndex(of: store.selection) ?? -1
+        let next: Int
+        if forward {
+            next = (currentIndex + 1) % all.count
+        } else {
+            next = (currentIndex - 1 + all.count) % all.count
+        }
+        withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
+            store.selection = all[next]
+        }
     }
 }
 
