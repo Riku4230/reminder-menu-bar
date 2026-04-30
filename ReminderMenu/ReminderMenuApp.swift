@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let hotKeyManager = GlobalHotKeyManager()
     private let aiSettings = AISettings()
     private let updateChecker = UpdateChecker()
+    private var quickAddController: QuickAddWindowController?
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -32,8 +33,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         appCoordinator.showPopover = { [weak self] in
             self?.showPopover()
         }
-        hotKeyManager.onHotKey = { [weak appCoordinator] in
-            appCoordinator?.showQuickAdd(openOptions: false)
+
+        quickAddController = QuickAddWindowController(
+            store: reminderStore,
+            app: appCoordinator,
+            aiSettings: aiSettings
+        )
+        hotKeyManager.onHotKey = { [weak self] in
+            self?.quickAddController?.toggle()
         }
 
         // メニューバーアイコンの脈動アニメを ReminderStore のパルスにフック
