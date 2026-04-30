@@ -160,8 +160,8 @@ struct MainView: View {
     /// 直前に起動した時のバージョン。新版にアップデート後の初回起動を検出するために使う。
     @AppStorage("lastSeenVersion") private var lastSeenVersion: String = ""
 
-    /// What's new シートの表示状態
-    @State private var showWhatsNew = false
+    /// What's new シート — 新版アップデート後の初回起動時にだけ表示。
+    /// `Identifiable` として `.sheet(item:)` でバインドし、状態 2 つの整合崩れを防ぐ。
     @State private var pendingReleaseNotes: UpdateChecker.ReleaseNotes?
 
     var body: some View {
@@ -308,20 +308,18 @@ struct MainView: View {
         } message: { update in
             Text("Hutch v\(update.latestVersion) が利用可能です。\n現在のバージョン: v\(Bundle.main.shortVersion)")
         }
-        .sheet(isPresented: $showWhatsNew) {
-            if let notes = pendingReleaseNotes {
-                WhatsNewView(notes: notes) {
-                    showWhatsNew = false
-                    pendingReleaseNotes = nil
-                    lastSeenVersion = Bundle.main.shortVersion
-                }
-                .preferredColorScheme(app.appearance.colorScheme)
+        .sheet(item: $pendingReleaseNotes) { notes in
+            WhatsNewView(notes: notes) {
+                pendingReleaseNotes = nil
+                lastSeenVersion = Bundle.main.shortVersion
             }
+            .preferredColorScheme(app.appearance.colorScheme)
         }
     }
 
     /// 新版にアップデートして初回起動した場合、リリースノートを取りに行ってシート表示。
     /// `lastSeenVersion` が空（初インストール）or 古いバージョンの時に発火。
+    /// GitHub からノートが取れない場合でも「vXXX にアップデートしました」だけのシートを必ず出す。
     private func checkForUpdatedVersion() {
         let current = Bundle.main.shortVersion
         // 初インストール時はノートを出さず、現在版を記録するだけ
@@ -337,14 +335,16 @@ struct MainView: View {
             return
         }
         Task { @MainActor in
-            let notes = await updateChecker.fetchReleaseNotes(for: current)
-            // GitHub にまだリリースが出ていない場合（手元 dev ビルドなど）は静かにスキップ
-            if let notes {
-                pendingReleaseNotes = notes
-                showWhatsNew = true
-            } else {
-                lastSeenVersion = current
-            }
+            let fetched = await updateChecker.fetchReleaseNotes(for: current)
+            let releasePage = URL(string: "https://github.com/Riku4230/Hutch/releases/tag/v\(current)")
+                ?? URL(string: "https://github.com/Riku4230/Hutch/releases")!
+            // フェッチ失敗時もフォールバックノートでシートを出す
+            // （ユーザーがバージョン上がったことを認識できるように）
+            pendingReleaseNotes = fetched ?? UpdateChecker.ReleaseNotes(
+                version: current,
+                body: "",
+                url: releasePage
+            )
         }
     }
 

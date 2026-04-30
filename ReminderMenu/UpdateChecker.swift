@@ -27,10 +27,11 @@ final class UpdateChecker: ObservableObject {
     }
 
     /// "What's new" シート用のリリースノート
-    struct ReleaseNotes: Equatable {
+    struct ReleaseNotes: Equatable, Identifiable {
         let version: String
         let body: String
         let url: URL
+        var id: String { version }
     }
 
     /// アプリ起動時 / popover 表示時に呼ぶ。

@@ -17,7 +17,7 @@ struct WhatsNewView: View {
             Divider().opacity(0.4)
 
             ScrollView {
-                Text(LocalizedStringKey(notes.body.isEmpty ? defaultBody : notes.body))
+                Text(LocalizedStringKey(displayBody))
                     .font(.system(size: 12.5))
                     .foregroundStyle(Color.primaryText)
                     .lineSpacing(4)
@@ -25,7 +25,7 @@ struct WhatsNewView: View {
                     .padding(20)
                     .textSelection(.enabled)
             }
-            .frame(maxHeight: 320)
+            .frame(minHeight: 160, maxHeight: 320)
 
             Divider().opacity(0.4)
 
@@ -38,7 +38,7 @@ struct WhatsNewView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
                     .fill(MRTheme.accent.opacity(0.14))
@@ -52,12 +52,23 @@ struct WhatsNewView: View {
                 Text("Hutch v\(notes.version) にアップデートしました")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(Color.primaryText)
-                Text("変更点を確認してください")
+                Text(hasReleaseNotes ? "変更点を確認してください" : "リリースノートはまだ取得できていません")
                     .font(.system(size: 11))
                     .foregroundStyle(Color.secondaryText)
             }
 
-            Spacer()
+            Spacer(minLength: 0)
+
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color.secondaryText)
+                    .frame(width: 22, height: 22)
+                    .background(MRTheme.Surface.inset, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.cancelAction)
+            .help("閉じる")
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
@@ -96,11 +107,17 @@ struct WhatsNewView: View {
         .background(MRTheme.Surface.glass)
     }
 
-    private var defaultBody: String {
-        """
-        このバージョンの詳細なリリースノートはまだ取得できませんでした。
+    private var hasReleaseNotes: Bool {
+        !notes.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
-        最新の変更履歴は [GitHub Releases](\(notes.url)) で確認できます。
+    /// body が空でも必ず何か表示するためのフォールバック付き本文
+    private var displayBody: String {
+        if hasReleaseNotes { return notes.body }
+        return """
+        Hutch を **v\(notes.version)** に更新しました。
+
+        このバージョンの詳細なリリースノートはまだ GitHub から取得できていません。最新の変更履歴は [リリースページ](\(notes.url.absoluteString)) で確認できます。
         """
     }
 }
