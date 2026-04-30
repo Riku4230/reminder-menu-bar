@@ -67,6 +67,16 @@ struct QuickAddView: View {
         .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
         .padding(12)
         .onAppear { inputFocused = true }
+        .background {
+            Button("") {
+                guard inputMode != .ai else { return }
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                    optionsOpen.toggle()
+                }
+            }
+            .keyboardShortcut("o", modifiers: .control)
+            .hidden()
+        }
     }
 
     // MARK: - Composer bar

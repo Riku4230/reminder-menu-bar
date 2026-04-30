@@ -380,6 +380,13 @@ struct MainView: View {
             shortcutButton(key: "4", modifiers: .command) {
                 store.selection = .smart(.important)
             }
+            // ⌃O — オプション開閉
+            shortcutButton(key: "o", modifiers: .control) {
+                guard inputMode != .ai else { return }
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                    optionsOpen.toggle()
+                }
+            }
             // ⎋ — popover を閉じる
             shortcutButton(key: .escape, modifiers: []) {
                 NSApp.keyWindow?.close()
