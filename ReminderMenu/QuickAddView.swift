@@ -74,9 +74,6 @@ struct QuickAddView: View {
 
     private var headerBar: some View {
         HStack {
-            Text("クイック追加")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Color.tertiaryText)
             Spacer()
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
@@ -89,9 +86,9 @@ struct QuickAddView: View {
             .buttonStyle(.plain)
             .help("閉じる")
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 10)
-        .padding(.bottom, 2)
+        .padding(.horizontal, 10)
+        .padding(.top, 8)
+        .padding(.bottom, 0)
     }
 
     // MARK: - Composer bar
