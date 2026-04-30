@@ -1,6 +1,6 @@
 cask "hutch" do
-  version "0.2.1"
-  sha256 "7929bece9986afbc08d16a73a75306f867270919925bab80b10448fbddd845b7"
+  version "0.3.2"
+  sha256 "5cc51082d8cdda5c29b497ba9a5805cad1cef3bfd06ebba319de90d0cb4c42ed"
 
   url "https://github.com/Riku4230/Hutch/releases/download/v#{version}/Hutch-v#{version}.dmg",
       verified: "github.com/Riku4230/Hutch/"
