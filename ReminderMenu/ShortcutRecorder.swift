@@ -40,11 +40,18 @@ final class GlobalHotKeyManager: ObservableObject {
     @Published private(set) var shortcut: HotKeyConfiguration
 
     var onHotKey: (() -> Void)?
+    var onPopoverHotKey: (() -> Void)?
 
     private var hotKeyRef: EventHotKeyRef?
+    private var popoverHotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
     private let userDefaultsKey = "globalQuickAddHotKey"
     private let hotKeyID = EventHotKeyID(signature: fourCharCode("RMHK"), id: 1)
+    private let popoverHotKeyID = EventHotKeyID(signature: fourCharCode("RMHK"), id: 2)
+
+    // ⌃M: keyCode 46 = "M", controlKey modifier
+    private let popoverKeyCode: UInt32 = 46
+    private let popoverModifiers: UInt32 = UInt32(controlKey)
 
     init() {
         if let data = UserDefaults.standard.data(forKey: userDefaultsKey),
@@ -75,6 +82,8 @@ final class GlobalHotKeyManager: ObservableObject {
 
     private func register() {
         unregister()
+
+        // Quick add hotkey
         var ref: EventHotKeyRef?
         let status = RegisterEventHotKey(
             shortcut.keyCode,
@@ -87,12 +96,30 @@ final class GlobalHotKeyManager: ObservableObject {
         if status == noErr {
             hotKeyRef = ref
         }
+
+        // Popover hotkey (⌃M)
+        var popRef: EventHotKeyRef?
+        let popStatus = RegisterEventHotKey(
+            popoverKeyCode,
+            popoverModifiers,
+            popoverHotKeyID,
+            GetEventDispatcherTarget(),
+            0,
+            &popRef
+        )
+        if popStatus == noErr {
+            popoverHotKeyRef = popRef
+        }
     }
 
     private func unregister() {
         if let hotKeyRef {
             UnregisterEventHotKey(hotKeyRef)
             self.hotKeyRef = nil
+        }
+        if let popoverHotKeyRef {
+            UnregisterEventHotKey(popoverHotKeyRef)
+            self.popoverHotKeyRef = nil
         }
     }
 
@@ -114,13 +141,17 @@ final class GlobalHotKeyManager: ObservableObject {
                     nil,
                     &incomingID
                 )
-                guard status == noErr, incomingID.signature == fourCharCode("RMHK"), incomingID.id == 1 else {
+                guard status == noErr, incomingID.signature == fourCharCode("RMHK") else {
                     return noErr
                 }
 
                 let manager = Unmanaged<GlobalHotKeyManager>.fromOpaque(userData).takeUnretainedValue()
                 DispatchQueue.main.async {
-                    manager.onHotKey?()
+                    switch incomingID.id {
+                    case 1: manager.onHotKey?()
+                    case 2: manager.onPopoverHotKey?()
+                    default: break
+                    }
                 }
                 return noErr
             },

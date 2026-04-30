@@ -42,6 +42,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         hotKeyManager.onHotKey = { [weak self] in
             self?.quickAddController?.toggle()
         }
+        hotKeyManager.onPopoverHotKey = { [weak self] in
+            self?.togglePopover()
+        }
 
         // メニューバーアイコンの脈動アニメを ReminderStore のパルスにフック
         reminderStore.menuBarPulses
